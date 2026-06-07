@@ -1,0 +1,27 @@
+# ForScore data files (personal, large — never commit)
+*.4sb
+*.4sc
+*.4ss
+
+# Extraction output
+/out/
+/extracted/
+
+# Agent / editor environment injections (mounted as character devices)
+.claude/
+.idea
+.vscode
+.mcp.json
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+
+# Python
+__pycache__/
+*.pyc
+.venv/
