@@ -123,3 +123,39 @@ def test_write_outputs_creates_files_and_json(tmp_path):
         "Practice": ["Song.pdf"]
     }
     assert "setlists" not in manifest
+
+
+def test_write_document_strips_placeholder_and_blocks_traversal(tmp_path):
+    import pytest
+
+    p = x.write_document("{%DOCUMENTS_DIR%}/sub/Song.pdf", b"%PDF", tmp_path)
+    assert p == tmp_path / "pdfs" / "sub" / "Song.pdf"
+    assert p.read_bytes() == b"%PDF"
+    with pytest.raises(ValueError):
+        x.write_document("{%DOCUMENTS_DIR%}/../escape.pdf", b"x", tmp_path)
+
+
+def test_main_end_to_end(tmp_path, sample_archive):
+    import json
+
+    src = tmp_path / "in.4sb"
+    src.write_bytes(sample_archive)
+    out = tmp_path / "out"
+    assert x.main([str(src), "-o", str(out)]) == 0
+    assert (out / "pdfs" / "Song.pdf").read_bytes() == b"%PDF-1.4 fake pdf bytes"
+    m = json.loads((out / "manifest.json").read_text())
+    assert m["documents"]["Song.pdf"]["meta"]["title"] == "My Song"
+    assert (out / "stamps" / "stamps_0.png").exists()
+
+
+def test_main_refuses_existing_outdir_without_force(tmp_path, sample_archive):
+    import pytest
+
+    src = tmp_path / "in.4sb"
+    src.write_bytes(sample_archive)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "preexisting").write_text("x")
+    with pytest.raises(SystemExit):
+        x.main([str(src), "-o", str(out)])
+    assert x.main([str(src), "-o", str(out), "--force"]) == 0

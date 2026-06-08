@@ -9,8 +9,11 @@ See README.md for the decoded 4SBV03 container and annotation encoding.
 """
 from __future__ import annotations
 
+import argparse
 import json
+import plistlib
 import re
+import unicodedata
 import zlib
 from collections import defaultdict
 from dataclasses import dataclass
@@ -171,8 +174,57 @@ def write_outputs(structure: dict, outdir: Path) -> None:
     )
 
 
+PLACEHOLDER = "{%DOCUMENTS_DIR%}/"
+
+
+def write_document(path: str, payload: bytes, outdir: Path) -> Path:
+    """Write a document under `outdir/pdfs/`, stripping the placeholder; reject traversal."""
+    rel = path[len(PLACEHOLDER):] if path.startswith(PLACEHOLDER) else path
+    rel = unicodedata.normalize("NFC", rel)
+    pdfs = (Path(outdir) / "pdfs").resolve()
+    target = (pdfs / rel).resolve()
+    if not str(target).startswith(str(pdfs) + "/") and target != pdfs:
+        raise ValueError(f"unsafe path escapes output dir: {path!r}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
-    raise NotImplementedError
+    """Extract a .4sb archive: documents to pdfs/, restructured metadata to manifest.json."""
+    ap = argparse.ArgumentParser(description="Extract a ForScore .4sb Archive.")
+    ap.add_argument("archive")
+    ap.add_argument("-o", "--out", default="out")
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="write into an existing output directory",
+    )
+    args = ap.parse_args(argv)
+
+    out = Path(args.out)
+    if out.exists() and not args.force and any(out.iterdir()):
+        raise SystemExit(f"{out} exists and is not empty (use --force)")
+
+    blob = Path(args.archive).read_bytes()
+    manifest_struct = None
+    n_docs = 0
+    for i, entry in enumerate(iter_entries(blob)):
+        if entry.comp_len != entry.consumed:
+            print(
+                f"warning: {entry.path}: header len {entry.comp_len} "
+                f"!= read {entry.consumed}"
+            )
+        if i == 0:
+            manifest_struct = restructure_manifest(plistlib.loads(entry.payload))
+        else:
+            write_document(entry.path, entry.payload, out)
+            n_docs += 1
+    if manifest_struct is None:
+        raise SystemExit("no manifest entry found — not a 4SBV0x archive?")
+    write_outputs(manifest_struct, out)
+    print(f"extracted {n_docs} documents + manifest to {out}/")
+    return 0
 
 
 if __name__ == "__main__":
