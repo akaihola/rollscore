@@ -1,6 +1,6 @@
 ---
 name: forscore-open-questions
-description: RESOLVED — the 4SB Archive container format and annotation encoding, reverse-engineered from a real Archive on 2026-06-07
+description: 4SB Archive container + annotation encoding SOLVED and an extractor built; one new open question remains — the {%AUX_DIR%} `.4se` layer files
 metadata:
   type: project
 ---
@@ -70,3 +70,19 @@ extract every original PDF, and read/convert annotations (ink as normalized vect
 text boxes, stamps as PNG) — no Mac, no jailbreak, no ForScore needed. This supersedes the
 "vendor-undocumented, no tool parses it" caveat in [[forscore-annotation-extraction]] for
 the Archive variant specifically.
+
+## A working extractor now exists (built 2026-06-08)
+
+`extract_4sb.py` in this repo (`/home/akaihola/prg/forscore`) — a standalone `uv run --script`,
+stdlib-only tool, 22 passing tests, validated against the real archive. It dumps documents to
+`out/pdfs/`, a restructured **lossless** `manifest.json` (`unparsed == {}` on real data),
+`stamps/*.png`, `setlists.json`. See README.md for the format spec, docs/plans/ for the design.
+
+## NEW open question — second placeholder `{%AUX_DIR%}/` and `.4se` layer files (found 2026-06-08)
+
+The real archive has **258 document entries, not ~71**: only ~71 are `{%DOCUMENTS_DIR%}/*.pdf`;
+**~187 are `{%AUX_DIR%}/` auxiliary assets** the extractor now routes to `out/aux/`. These are
+**rendered page PNGs** plus **`.4se` files**. Unknown: are `.4se` files ForScore's real
+per-score **editable annotation-layer** format (richer than the manifest's `bluePoints`/
+`textAnnotations`)? If so they may be the key to faithful annotation rendering/round-trip.
+Next step: `unzip -l`/header-magic a `.4se`, then parse. Tracked in this repo's BACKLOG.md.

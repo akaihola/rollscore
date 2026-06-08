@@ -8,6 +8,17 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   + stamps + setlists from a `.4sb` Archive. Stdlib-only runtime. See
   [docs/plans/2026-06-08-4sb-extractor.md](docs/plans/2026-06-08-4sb-extractor.md).
 
+## Reverse-engineering (next)
+
+- [ ] **Investigate `{%AUX_DIR%}/` `.4se` layer files.** The real archive holds ~187
+  auxiliary entries (now extracted to `out/aux/`): rendered page PNGs **and `.4se`
+  files**. Open question: are `.4se` files ForScore's real per-score **editable
+  annotation-layer** format — potentially richer/more faithful than the manifest's
+  `bluePoints`/`textAnnotations`? If so they may be the key to high-fidelity rendering
+  and round-trip. First steps: identify the `.4se` header magic (`unzip -l` / `file` /
+  hex), check for `bplist00`/gzip/SQLite framing, then parse a sample and compare its
+  contents against the same score's manifest annotations. Feeds the Rendering work below.
+
 ## Rendering (future)
 
 - [ ] **Render annotations onto PDFs (flattened export).** Bake the extracted annotation
