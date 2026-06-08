@@ -10,8 +10,20 @@ See README.md for the decoded 4SBV03 container and annotation encoding.
 from __future__ import annotations
 
 import re
+import zlib
+from dataclasses import dataclass
+from typing import Iterator
 
 MAGIC = b"<--4SBV03-->"
+GZIP_MAGIC = b"\x1f\x8b\x08"
+
+
+@dataclass
+class Entry:
+    path: str
+    payload: bytes      # decompressed
+    comp_len: int       # from header
+    consumed: int       # gzip bytes actually read
 
 
 def parse_entry_header(header: bytes) -> tuple[int, int, str]:
@@ -25,6 +37,17 @@ def parse_entry_header(header: bytes) -> tuple[int, int, str]:
     assert comp_len_match is not None, f"no compressed length in header: {header!r}"
     comp_len = int(comp_len_match.group(1))
     return path_len, comp_len, path
+
+
+def iter_entries(blob: bytes) -> Iterator[Entry]:
+    pos = 0
+    while (g := blob.find(GZIP_MAGIC, pos)) >= 0:
+        path_len, comp_len, path = parse_entry_header(blob[pos:g])
+        d = zlib.decompressobj(31)  # wbits=31 -> gzip framing
+        payload = d.decompress(blob[g:]) + d.flush()
+        consumed = len(blob) - g - len(d.unused_data)
+        yield Entry(path=path, payload=payload, comp_len=comp_len, consumed=consumed)
+        pos = g + consumed
 
 
 def main(argv: list[str] | None = None) -> int:
