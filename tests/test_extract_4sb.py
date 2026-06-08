@@ -168,6 +168,22 @@ def test_main_end_to_end(tmp_path, sample_archive):
     assert (out / "stamps" / "stamps_0.png").exists()
 
 
+def test_main_rejects_non_archive_file(tmp_path):
+    src = tmp_path / "junk.4sb"
+    src.write_bytes(b"this is not an archive")
+    with pytest.raises(SystemExit):
+        x.main([str(src), "-o", str(tmp_path / "out")])
+
+
+def test_main_rejects_plain_gzip_file(tmp_path):
+    import gzip
+
+    src = tmp_path / "plain.gz"
+    src.write_bytes(gzip.compress(b"hello"))
+    with pytest.raises(SystemExit):
+        x.main([str(src), "-o", str(tmp_path / "out")])
+
+
 def test_main_refuses_existing_outdir_without_force(tmp_path, sample_archive):
     src = tmp_path / "in.4sb"
     src.write_bytes(sample_archive)

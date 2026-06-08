@@ -218,6 +218,10 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"{out} exists and is not empty (use --force)")
 
     blob = Path(args.archive).read_bytes()
+    if not blob.startswith(MAGIC):
+        raise SystemExit(
+            f"{args.archive}: not a 4SBV0x archive (missing magic header)"
+        )
     manifest_struct = None
     n_docs = 0
     for i, entry in enumerate(iter_entries(blob)):
