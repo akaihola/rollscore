@@ -41,6 +41,13 @@ def test_parse_geometry_point_and_rect():
     assert x.parse_geometry("{{1.0, 2.0}, {3.0, 4.0}}") == [[1.0, 2.0], [3.0, 4.0]]
 
 
+def test_parse_geometry_scientific_notation():
+    assert x.parse_geometry("{{-1.5, 2.0}, {3.0e2, 4.5E-1}}") == [
+        [-1.5, 2.0],
+        [300.0, 0.45],
+    ]
+
+
 def test_parse_ink_keeps_raw_and_tags_markers():
     out = x.parse_ink(["0.1&BLU;0.2&BLU;0&ORG;0.3&ORG;0.4&ORG;1"])
     assert out[0]["raw"] == "0.1&BLU;0.2&BLU;0&ORG;0.3&ORG;0.4&ORG;1"

@@ -54,7 +54,7 @@ def iter_entries(blob: bytes) -> Iterator[Entry]:
         pos = g + consumed
 
 
-_FLOAT = re.compile(r"-?\d+(?:\.\d+)?(?:e-?\d+)?")
+_FLOAT = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
 
 def parse_geometry(s: str) -> list:
