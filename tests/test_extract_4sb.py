@@ -184,6 +184,16 @@ def test_main_rejects_plain_gzip_file(tmp_path):
         x.main([str(src), "-o", str(tmp_path / "out")])
 
 
+def test_write_document_rejects_empty_relative_path(tmp_path):
+    with pytest.raises(ValueError):
+        x.write_document("{%DOCUMENTS_DIR%}/", b"x", tmp_path)
+    with pytest.raises(ValueError):
+        x.write_document("{%AUX_DIR%}/", b"x", tmp_path)
+    # a normal nested path still works
+    p = x.write_document("{%DOCUMENTS_DIR%}/sub/Song.pdf", b"%PDF", tmp_path)
+    assert p == tmp_path / "pdfs" / "sub" / "Song.pdf"
+
+
 def test_main_refuses_existing_outdir_without_force(tmp_path, sample_archive):
     src = tmp_path / "in.4sb"
     src.write_bytes(sample_archive)

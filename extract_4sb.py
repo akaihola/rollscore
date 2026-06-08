@@ -192,6 +192,8 @@ def write_document(path: str, payload: bytes, outdir: Path) -> Path:
     else:
         rel, subdir = path, "pdfs"
     rel = unicodedata.normalize("NFC", rel)
+    if rel in ("", "."):
+        raise ValueError(f"empty document path: {path!r}")
     root = (Path(outdir) / subdir).resolve()
     target = (root / rel).resolve()
     if not str(target).startswith(str(root) + "/") and target != root:
