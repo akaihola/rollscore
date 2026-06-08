@@ -4,7 +4,7 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
 
 ## Extractor
 
-- [~] **Raw lossless extractor** — dump original documents + restructured `manifest.json`
+- [x] **Raw lossless extractor** — dump original documents + restructured `manifest.json`
   + stamps + setlists from a `.4sb` Archive. Stdlib-only runtime. See
   [docs/plans/2026-06-08-4sb-extractor.md](docs/plans/2026-06-08-4sb-extractor.md).
 
