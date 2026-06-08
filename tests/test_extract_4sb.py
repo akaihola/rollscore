@@ -96,3 +96,30 @@ def test_restructure_buckets_keys(sample_archive):
 def test_restructure_routes_unknown_keys_to_unparsed():
     s = x.restructure_manifest({"weird&XYZ;thing": 1})
     assert s["unparsed"] == {"weird&XYZ;thing": 1}
+
+
+def test_write_outputs_creates_files_and_json(tmp_path):
+    import json
+    from datetime import datetime
+
+    structure = {
+        "documents": {
+            "Song.pdf": {
+                "meta": {"added": datetime(2020, 1, 2, 3, 4, 5)},
+                "pages": {},
+            }
+        },
+        "system": {},
+        "setlists": {"Practice": ["Song.pdf"]},
+        "stamps": {"stamps.plist": [b"\x89PNG\r\n\x1a\nFAKE"]},
+        "unparsed": {},
+    }
+    x.write_outputs(structure, tmp_path)
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert manifest["documents"]["Song.pdf"]["meta"]["added"] == "2020-01-02T03:04:05"
+    assert manifest["stamps"]["stamps.plist"][0] == {"_png": "stamps/stamps_0.png"}
+    assert (tmp_path / "stamps" / "stamps_0.png").read_bytes().startswith(b"\x89PNG")
+    assert json.loads((tmp_path / "setlists.json").read_text()) == {
+        "Practice": ["Song.pdf"]
+    }
+    assert "setlists" not in manifest

@@ -9,10 +9,13 @@ See README.md for the decoded 4SBV03 container and annotation encoding.
 """
 from __future__ import annotations
 
+import json
 import re
 import zlib
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
 from typing import Iterator
 
 MAGIC = b"<--4SBV03-->"
@@ -135,6 +138,37 @@ def restructure_manifest(flat: dict) -> dict:
         "stamps": stamps,
         "unparsed": unparsed,
     }
+
+
+def _json_default(o):
+    """JSON fallback encoder: render datetime/date as ISO-8601."""
+    if isinstance(o, (datetime, date)):
+        return o.isoformat()
+    raise TypeError(f"not JSON-serializable: {type(o).__name__}")
+
+
+def write_outputs(structure: dict, outdir: Path) -> None:
+    """Write stamps as PNG files, then manifest.json (sans setlists) + setlists.json."""
+    outdir = Path(outdir)
+    (outdir / "stamps").mkdir(parents=True, exist_ok=True)
+    stamps = structure.get("stamps", {})
+    refs = {}
+    for name, blobs in stamps.items():
+        base = name.replace(".plist", "")
+        out = []
+        for i, blob in enumerate(blobs):
+            fn = f"{base}_{i}.png"
+            (outdir / "stamps" / fn).write_bytes(blob)
+            out.append({"_png": f"stamps/{fn}"})
+        refs[name] = out
+    serializable = {**structure, "stamps": refs}
+    setlists = serializable.pop("setlists", {})
+    (outdir / "manifest.json").write_text(
+        json.dumps(serializable, indent=2, ensure_ascii=False, default=_json_default)
+    )
+    (outdir / "setlists.json").write_text(
+        json.dumps(setlists, indent=2, ensure_ascii=False, default=_json_default)
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
