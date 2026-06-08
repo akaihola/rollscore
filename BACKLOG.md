@@ -30,3 +30,14 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
 - [ ] `--list` mode: print the entry table (path, sizes) without extracting.
 - [ ] Verify/repair: detect truncated or out-of-order members.
 - [ ] Support the single-score `.4sc` container (likely the same `4SBV0x` framing — confirm).
+
+## Hardening (deferred)
+
+- [ ] **Strict JSON output.** `json.dumps` currently emits bare `Infinity`/`NaN` for
+  non-finite floats (valid for Python's decoder, not strict JSON). Consider
+  `allow_nan=False` if strict output is ever needed. (Implausible in normalized
+  ink/geometry data.)
+- [ ] **Replace `assert` in `parse_entry_header`.** It uses `assert` for structural
+  header validation; under `python -O` asserts are stripped and a malformed header
+  would fail with a less clear error. Consider raising `ValueError` instead, now that
+  `main` exposes this path to arbitrary input files.
