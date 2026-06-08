@@ -34,3 +34,8 @@ def test_iter_entries_validates_compressed_length(sample_archive):
     # comp_len in each header must equal the bytes actually consumed by the gzip member
     for e in x.iter_entries(sample_archive):
         assert e.comp_len == e.consumed
+
+
+def test_parse_geometry_point_and_rect():
+    assert x.parse_geometry("{2.5, -13.8}") == [2.5, -13.8]
+    assert x.parse_geometry("{{1.0, 2.0}, {3.0, 4.0}}") == [[1.0, 2.0], [3.0, 4.0]]

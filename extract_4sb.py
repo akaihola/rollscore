@@ -20,6 +20,8 @@ GZIP_MAGIC = b"\x1f\x8b\x08"
 
 @dataclass
 class Entry:
+    """One archive entry; `consumed` is the gzip member's actual byte length, checkable against `comp_len`."""
+
     path: str
     payload: bytes      # decompressed
     comp_len: int       # from header
@@ -40,6 +42,7 @@ def parse_entry_header(header: bytes) -> tuple[int, int, str]:
 
 
 def iter_entries(blob: bytes) -> Iterator[Entry]:
+    """Walk the concatenated `[header][gzip member]` entries of a 4SBV0x blob."""
     pos = 0
     while (g := blob.find(GZIP_MAGIC, pos)) >= 0:
         path_len, comp_len, path = parse_entry_header(blob[pos:g])
@@ -48,6 +51,17 @@ def iter_entries(blob: bytes) -> Iterator[Entry]:
         consumed = len(blob) - g - len(d.unused_data)
         yield Entry(path=path, payload=payload, comp_len=comp_len, consumed=consumed)
         pos = g + consumed
+
+
+_FLOAT = re.compile(r"-?\d+(?:\.\d+)?(?:e-?\d+)?")
+
+
+def parse_geometry(s: str) -> list:
+    """Parse a CGPoint/CGRect string (`{a,b}` / `{{a,b},{c,d}}`) to float lists."""
+    nums = [float(n) for n in _FLOAT.findall(s)]
+    if len(nums) == 4:
+        return [nums[:2], nums[2:]]
+    return nums
 
 
 def main(argv: list[str] | None = None) -> int:
