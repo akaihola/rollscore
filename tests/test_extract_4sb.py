@@ -64,6 +64,16 @@ def test_parse_ink_keeps_non_numeric_token_as_string():
     assert out[0]["tokens"][2] == {"marker": "ORG", "value": 2}
 
 
+def test_restructure_malformed_ink_key_to_unparsed():
+    s = x.restructure_manifest({"file.pdf&BLU;bluePoints": ["x"]})
+    assert s["unparsed"] == {"file.pdf&BLU;bluePoints": ["x"]}
+
+
+def test_restructure_wellformed_ink_key_routes_to_page():
+    s = x.restructure_manifest({"file.pdf&BLU;3&BLU;bluePoints": ["0.1&BLU;0.2"]})
+    assert "ink" in s["documents"]["file.pdf"]["pages"]["3"]
+
+
 def test_restructure_buckets_keys(sample_archive):
     manifest = next(x.iter_entries(sample_archive)).payload
     import plistlib

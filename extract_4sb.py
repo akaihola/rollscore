@@ -107,7 +107,7 @@ def restructure_manifest(flat: dict) -> dict:
             setlists[key[len("&SET;"):]] = value
         elif key.startswith("&SYS;"):
             system[key[len("&SYS;"):]] = value
-        elif "&BLU;" in key and key.endswith("bluePoints"):
+        elif key.count("&BLU;") == 2 and key.endswith("bluePoints"):
             file, pg = key.split("&BLU;")[0], key.split("&BLU;")[1]
             docs[file]["pages"][pg]["ink"] = parse_ink(value)
         elif key.count("|") == 2:
