@@ -38,16 +38,16 @@ use `zlib.decompressobj(31)` and read `unused_data` to find the next boundary.)
 A single **flat dict** (~2300 keys for this library); keys are pipe/namespace-delimited paths.
 No raw binary annotation blobs — everything is structured strings / lists / dicts:
 
-| Data | Key pattern | Encoding |
-|------|-------------|----------|
-| Freehand ink | `file.pdf&BLU;<pg>&BLU;bluePoints` | list of normalized stroke points `x&BLU;y&BLU;idx&ORG;…` (vector, recoverable) |
-| Text boxes | `file.pdf\|<pg>\|textAnnotations` | dicts: `text`, `fontFace/Size/Color/Weight`, normalized `origin.x/y`, `size.x/y`, `layerID` UUID, `layerVisible` |
-| Stamps | `stamps.plist` / `stamps2.plist` | list of **PNG bytes** (`\x89PNG…`) |
-| Crop / view | `…\|rect`, `\|offset`, `\|trOffset`, `\|zoom`, `\|half`, `\|rotation`, `\|croppedLandscape` | stringified `CGRect`/`CGPoint` + scalars |
-| Bookmarks | `file.pdf\|bookmarks` | dicts: Title, Composer, First/Last Page, Identifier UUID, Label, BPM, Key |
-| Score metadata | `file.pdf\|title`/`composer`/`genre`/`keywords`/`added`/`printNumber`/`version`/`difficulty`/`labels`/`pitch`/`key` | scalars / datetime |
-| Setlists | `&SYS;setlists` → `&SET;<name>` | ordered lists of filenames |
-| App settings | ~90 `&SYS;…` keys | brushes, ruler, tuner, metronome, pen presets, … |
+| Data           | Key pattern                                                                                                         | Encoding                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Freehand ink   | `file.pdf&BLU;<pg>&BLU;bluePoints`                                                                                  | list of normalized stroke points `x&BLU;y&BLU;idx&ORG;…` (vector, recoverable)                                   |
+| Text boxes     | `file.pdf\|<pg>\|textAnnotations`                                                                                   | dicts: `text`, `fontFace/Size/Color/Weight`, normalized `origin.x/y`, `size.x/y`, `layerID` UUID, `layerVisible` |
+| Stamps         | `stamps.plist` / `stamps2.plist`                                                                                    | list of **PNG bytes** (`\x89PNG…`)                                                                               |
+| Crop / view    | `…\|rect`, `\|offset`, `\|trOffset`, `\|zoom`, `\|half`, `\|rotation`, `\|croppedLandscape`                         | stringified `CGRect`/`CGPoint` + scalars                                                                         |
+| Bookmarks      | `file.pdf\|bookmarks`                                                                                               | dicts: Title, Composer, First/Last Page, Identifier UUID, Label, BPM, Key                                        |
+| Score metadata | `file.pdf\|title`/`composer`/`genre`/`keywords`/`added`/`printNumber`/`version`/`difficulty`/`labels`/`pitch`/`key` | scalars / datetime                                                                                               |
+| Setlists       | `&SYS;setlists` → `&SET;<name>`                                                                                     | ordered lists of filenames                                                                                       |
+| App settings   | ~90 `&SYS;…` keys                                                                                                   | brushes, ruler, tuner, metronome, pen presets, …                                                                 |
 
 ## Usage
 
