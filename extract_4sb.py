@@ -175,15 +175,26 @@ def write_outputs(structure: dict, outdir: Path) -> None:
 
 
 PLACEHOLDER = "{%DOCUMENTS_DIR%}/"
+# Auxiliary assets (rendered page PNGs, .4se layer files) live under a separate
+# placeholder; route them to `aux/` rather than mislabeling them as PDFs.
+AUX_PLACEHOLDER = "{%AUX_DIR%}/"
 
 
 def write_document(path: str, payload: bytes, outdir: Path) -> Path:
-    """Write a document under `outdir/pdfs/`, stripping the placeholder; reject traversal."""
-    rel = path[len(PLACEHOLDER):] if path.startswith(PLACEHOLDER) else path
+    """Write an archived file under `outdir/`, stripping placeholders; reject traversal.
+
+    `{%DOCUMENTS_DIR%}/` entries land in `pdfs/`, `{%AUX_DIR%}/` entries in `aux/`.
+    """
+    if path.startswith(AUX_PLACEHOLDER):
+        rel, subdir = path[len(AUX_PLACEHOLDER):], "aux"
+    elif path.startswith(PLACEHOLDER):
+        rel, subdir = path[len(PLACEHOLDER):], "pdfs"
+    else:
+        rel, subdir = path, "pdfs"
     rel = unicodedata.normalize("NFC", rel)
-    pdfs = (Path(outdir) / "pdfs").resolve()
-    target = (pdfs / rel).resolve()
-    if not str(target).startswith(str(pdfs) + "/") and target != pdfs:
+    root = (Path(outdir) / subdir).resolve()
+    target = (root / rel).resolve()
+    if not str(target).startswith(str(root) + "/") and target != root:
         raise ValueError(f"unsafe path escapes output dir: {path!r}")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(payload)

@@ -135,6 +135,12 @@ def test_write_document_strips_placeholder_and_blocks_traversal(tmp_path):
         x.write_document("{%DOCUMENTS_DIR%}/../escape.pdf", b"x", tmp_path)
 
 
+def test_write_document_routes_aux_assets_to_aux_dir(tmp_path):
+    p = x.write_document("{%AUX_DIR%}/Song.pdf|1.png", b"\x89PNG", tmp_path)
+    assert p == tmp_path / "aux" / "Song.pdf|1.png"
+    assert p.read_bytes() == b"\x89PNG"
+
+
 def test_main_end_to_end(tmp_path, sample_archive):
     import json
 
