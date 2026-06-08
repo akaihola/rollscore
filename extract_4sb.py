@@ -79,7 +79,11 @@ def parse_ink(blue_points: list[str]) -> list[dict]:
             if part in ("&BLU;", "&ORG;"):
                 marker = part.strip("&;")
             elif part != "":
-                tokens.append({"marker": marker, "value": _num(part)})
+                try:
+                    value = _num(part)
+                except ValueError:
+                    value = part
+                tokens.append({"marker": marker, "value": value})
         out.append({"raw": raw, "tokens": tokens})
     return out
 

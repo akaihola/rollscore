@@ -56,6 +56,14 @@ def test_parse_ink_keeps_raw_and_tags_markers():
     assert out[0]["tokens"][3] == {"marker": "ORG", "value": 0.3}
 
 
+def test_parse_ink_keeps_non_numeric_token_as_string():
+    out = x.parse_ink(["0.1&BLU;foo&ORG;2"])
+    assert out[0]["raw"] == "0.1&BLU;foo&ORG;2"
+    assert out[0]["tokens"][0] == {"marker": "start", "value": 0.1}
+    assert out[0]["tokens"][1] == {"marker": "BLU", "value": "foo"}
+    assert out[0]["tokens"][2] == {"marker": "ORG", "value": 2}
+
+
 def test_restructure_buckets_keys(sample_archive):
     manifest = next(x.iter_entries(sample_archive)).payload
     import plistlib
