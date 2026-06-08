@@ -106,6 +106,10 @@ def restructure_manifest(flat: dict) -> dict:
     docs: dict = defaultdict(lambda: {"meta": {}, "pages": defaultdict(dict)})
     system, setlists, stamps, unparsed = {}, {}, {}, {}
 
+    # Keys use ForScore's own `|` / `&...;` delimiters. The `|`-count dispatch
+    # below assumes filenames contain no `|`; a score named e.g. "a|b.pdf" would
+    # miscount and nest under a slightly wrong key (no data loss — it still lands
+    # in the JSON). The real library has no such names; revisit if one appears.
     for key, value in flat.items():
         if key in ("stamps.plist", "stamps2.plist"):
             stamps[key] = value
