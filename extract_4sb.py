@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 import zlib
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -81,6 +82,55 @@ def parse_ink(blue_points: list[str]) -> list[dict]:
                 tokens.append({"marker": marker, "value": _num(part)})
         out.append({"raw": raw, "tokens": tokens})
     return out
+
+
+_GEOM_PROPS = {"rect", "offset", "trOffset"}
+
+
+def restructure_manifest(flat: dict) -> dict:
+    """Flat manifest dict -> nested `{documents, system, setlists, stamps, unparsed}`.
+
+    Pure: stamp PNG bytes pass through unchanged. Every key lands somewhere;
+    unrecognized keys go to `unparsed` so nothing is silently dropped.
+    """
+    docs: dict = defaultdict(lambda: {"meta": {}, "pages": defaultdict(dict)})
+    system, setlists, stamps, unparsed = {}, {}, {}, {}
+
+    for key, value in flat.items():
+        if key in ("stamps.plist", "stamps2.plist"):
+            stamps[key] = value
+        elif key.startswith("&SET;"):
+            setlists[key[len("&SET;"):]] = value
+        elif key.startswith("&SYS;"):
+            system[key[len("&SYS;"):]] = value
+        elif "&BLU;" in key and key.endswith("bluePoints"):
+            file, pg = key.split("&BLU;")[0], key.split("&BLU;")[1]
+            docs[file]["pages"][pg]["ink"] = parse_ink(value)
+        elif key.count("|") == 2:
+            file, pg, prop = key.split("|")
+            docs[file]["pages"][pg][prop] = (
+                parse_geometry(value) if prop in _GEOM_PROPS else value
+            )
+        elif key.count("|") == 1:
+            file, prop = key.split("|")
+            docs[file]["meta"][prop] = value
+        else:
+            unparsed[key] = value
+
+    # freeze defaultdicts -> plain dicts for JSON
+    out_docs = {}
+    for f, d in docs.items():
+        out_docs[f] = {
+            "meta": d["meta"],
+            "pages": {p: dict(pg) for p, pg in d["pages"].items()},
+        }
+    return {
+        "documents": out_docs,
+        "system": system,
+        "setlists": setlists,
+        "stamps": stamps,
+        "unparsed": unparsed,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

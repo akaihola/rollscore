@@ -47,3 +47,27 @@ def test_parse_ink_keeps_raw_and_tags_markers():
     assert out[0]["tokens"][0] == {"marker": "start", "value": 0.1}
     assert out[0]["tokens"][2] == {"marker": "BLU", "value": 0.0}
     assert out[0]["tokens"][3] == {"marker": "ORG", "value": 0.3}
+
+
+def test_restructure_buckets_keys(sample_archive):
+    manifest = next(x.iter_entries(sample_archive)).payload
+    import plistlib
+
+    s = x.restructure_manifest(plistlib.loads(manifest))
+    doc = s["documents"]["Song.pdf"]
+    assert doc["meta"]["title"] == "My Song"
+    assert doc["pages"]["3"]["rect"] == [[1.0, 2.0], [3.0, 4.0]]
+    assert doc["pages"]["3"]["zoom"] == 1.5
+    assert doc["pages"]["3"]["ink"][0]["raw"].startswith("0.1&BLU;")
+    assert doc["pages"]["3"]["textAnnotations"][0]["text"] == "hi"
+    # `Song.pdf|bookmarks` has one `|` -> rule 6 routes it to meta.
+    assert doc["meta"]["bookmarks"][0]["Title"] == "Intro"
+    assert s["system"]["rulerVisible"] is True
+    assert s["setlists"]["Practice"] == ["Song.pdf"]
+    assert s["stamps"]["stamps.plist"][0].startswith(b"\x89PNG")
+    assert s["unparsed"] == {}
+
+
+def test_restructure_routes_unknown_keys_to_unparsed():
+    s = x.restructure_manifest({"weird&XYZ;thing": 1})
+    assert s["unparsed"] == {"weird&XYZ;thing": 1}
