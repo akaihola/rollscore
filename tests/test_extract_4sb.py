@@ -39,3 +39,11 @@ def test_iter_entries_validates_compressed_length(sample_archive):
 def test_parse_geometry_point_and_rect():
     assert x.parse_geometry("{2.5, -13.8}") == [2.5, -13.8]
     assert x.parse_geometry("{{1.0, 2.0}, {3.0, 4.0}}") == [[1.0, 2.0], [3.0, 4.0]]
+
+
+def test_parse_ink_keeps_raw_and_tags_markers():
+    out = x.parse_ink(["0.1&BLU;0.2&BLU;0&ORG;0.3&ORG;0.4&ORG;1"])
+    assert out[0]["raw"] == "0.1&BLU;0.2&BLU;0&ORG;0.3&ORG;0.4&ORG;1"
+    assert out[0]["tokens"][0] == {"marker": "start", "value": 0.1}
+    assert out[0]["tokens"][2] == {"marker": "BLU", "value": 0.0}
+    assert out[0]["tokens"][3] == {"marker": "ORG", "value": 0.3}

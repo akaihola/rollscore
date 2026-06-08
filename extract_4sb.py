@@ -64,6 +64,25 @@ def parse_geometry(s: str) -> list:
     return nums
 
 
+def _num(s: str):
+    f = float(s)
+    return int(f) if f.is_integer() else f
+
+
+def parse_ink(blue_points: list[str]) -> list[dict]:
+    """Parse `&BLU;`/`&ORG;`-delimited ink point strings, lossless raw + tagged tokens."""
+    out = []
+    for raw in blue_points:
+        tokens, marker = [], "start"
+        for part in re.split(r"(&BLU;|&ORG;)", raw):
+            if part in ("&BLU;", "&ORG;"):
+                marker = part.strip("&;")
+            elif part != "":
+                tokens.append({"marker": marker, "value": _num(part)})
+        out.append({"raw": raw, "tokens": tokens})
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     raise NotImplementedError
 
