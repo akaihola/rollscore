@@ -1,4 +1,10 @@
+import pathlib
+
+import pytest
+
 import extract_4sb as x
+
+REAL = pathlib.Path("Archive 2026-06-07 23-15-54.4sb")
 
 
 def test_parse_header_entry1_with_magic():
@@ -98,6 +104,16 @@ def test_restructure_routes_unknown_keys_to_unparsed():
     assert s["unparsed"] == {"weird&XYZ;thing": 1}
 
 
+@pytest.mark.skipif(not REAL.exists(), reason="real archive not present")
+def test_real_archive_round_trips(tmp_path):
+    import json
+
+    assert x.main([str(REAL), "-o", str(tmp_path / "out")]) == 0
+    m = json.loads((tmp_path / "out" / "manifest.json").read_text())
+    assert m["unparsed"] == {}, f"unrouted keys: {list(m['unparsed'])[:10]}"
+    assert len(m["documents"]) > 0
+
+
 def test_write_outputs_creates_files_and_json(tmp_path):
     import json
     from datetime import datetime
@@ -126,8 +142,6 @@ def test_write_outputs_creates_files_and_json(tmp_path):
 
 
 def test_write_document_strips_placeholder_and_blocks_traversal(tmp_path):
-    import pytest
-
     p = x.write_document("{%DOCUMENTS_DIR%}/sub/Song.pdf", b"%PDF", tmp_path)
     assert p == tmp_path / "pdfs" / "sub" / "Song.pdf"
     assert p.read_bytes() == b"%PDF"
@@ -155,8 +169,6 @@ def test_main_end_to_end(tmp_path, sample_archive):
 
 
 def test_main_refuses_existing_outdir_without_force(tmp_path, sample_archive):
-    import pytest
-
     src = tmp_path / "in.4sb"
     src.write_bytes(sample_archive)
     out = tmp_path / "out"

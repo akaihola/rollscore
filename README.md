@@ -49,8 +49,19 @@ No raw binary annotation blobs — everything is structured strings / lists / di
 | Setlists | `&SYS;setlists` → `&SET;<name>` | ordered lists of filenames |
 | App settings | ~90 `&SYS;…` keys | brushes, ruler, tuner, metronome, pen presets, … |
 
+## Usage
+
+```bash
+./extract_4sb.py "Archive ….4sb" -o out      # uv run --script: auto-installs deps
+uv run pytest                                 # run the tests
+```
+
+Output: `out/pdfs/` (original documents), `out/manifest.json` (restructured metadata +
+annotations), `out/stamps/*.png`, `out/setlists.json`. Auxiliary assets ForScore stores
+alongside scores (rendered page PNGs, `.4se` layer files) land in `out/aux/`.
+
 ## Status
 
 - [x] Container format decoded (`4SBV03`)
 - [x] Annotation encoding decoded (manifest `bplist00`)
-- [ ] Extractor script — dump original PDFs + export annotations (planned next)
+- [x] Extractor script — dump original PDFs + export annotations
