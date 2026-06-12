@@ -7,6 +7,9 @@ no ForScore install. Reverse-engineered from a real 151 MB Archive on 2026-06-07
 See [memory/forscore-annotation-extraction.md](memory/forscore-annotation-extraction.md) for
 the wider context (how ForScore stores data, backup strategy, destination apps) and
 [memory/forscore-open-questions.md](memory/forscore-open-questions.md) for the research trail.
+For planning the downstream web app, see
+[docs/feature-coverage.md](docs/feature-coverage.md) — a forScore-feature ↔ archive-data
+coverage matrix with MVP scope recommendations.
 
 ## The `4SBV03` container format
 

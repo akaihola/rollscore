@@ -85,4 +85,12 @@ The real archive has **258 document entries, not ~71**: only ~71 are `{%DOCUMENT
 **rendered page PNGs** plus **`.4se` files**. Unknown: are `.4se` files ForScore's real
 per-score **editable annotation-layer** format (richer than the manifest's `bluePoints`/
 `textAnnotations`)? If so they may be the key to faithful annotation rendering/round-trip.
-Next step: `unzip -l`/header-magic a `.4se`, then parse. Tracked in this repo's BACKLOG.md.
+
+**Framing identified (2026-06-13):** each `.4se` is **gzip → `bplist00`** (NSKeyedArchiver);
+`…|template.4se` = per-document layer template. In `out/`, manifest ink is near-empty
+(1/70 docs inline `ink`, 4/70 `textAnnotations`) while `aux/` holds 62 `.4se` + 125 RGBA
+full-page **transparent overlay PNGs** — i.e. the real annotations live in `.4se` + the
+raster overlays, not the manifest. Still open: decode the NSKeyedArchiver graph to stroke
+geometry. Web-app impact + an MVP feature/data coverage matrix are written up in this repo's
+[docs/feature-coverage.md]; raster overlays are the easy MVP path, `.4se` vector decode is
+phase 2. Tracked in BACKLOG.md.

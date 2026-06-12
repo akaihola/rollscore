@@ -15,9 +15,12 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   files**. Open question: are `.4se` files ForScore's real per-score **editable
   annotation-layer** format — potentially richer/more faithful than the manifest's
   `bluePoints`/`textAnnotations`? If so they may be the key to high-fidelity rendering
-  and round-trip. First steps: identify the `.4se` header magic (`unzip -l` / `file` /
-  hex), check for `bplist00`/gzip/SQLite framing, then parse a sample and compare its
-  contents against the same score's manifest annotations. Feeds the Rendering work below.
+  and round-trip. **Framing identified (2026-06-13):** each `.4se` is **gzip → `bplist00`**
+  (NSKeyedArchiver); `…|template.4se` is the per-document layer template. Manifest ink is
+  near-empty (1/70 docs inline `ink`, 4/70 `textAnnotations`), so `.4se` + the rasterized
+  `aux/*.png` overlays are where the real annotations live. Remaining work: decode the
+  NSKeyedArchiver graph to stroke geometry and compare against the manifest. See
+  [docs/feature-coverage.md](docs/feature-coverage.md) for the web-app impact.
 
 ## Rendering (future)
 
