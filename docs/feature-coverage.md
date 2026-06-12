@@ -32,8 +32,11 @@ out/
   in **`aux/`**:
   - `aux/<file>|<page>.png` — 125 files, RGBA full-page (e.g. 2160×2824) **transparent
     overlays** (rasterized render of that page's annotations).
-  - `aux/<file>|<page>.4se` — 62 files, **gzip → `bplist00`** (NSKeyedArchiver). The vector
-    annotation layer source. `…|template.4se` is the per-document layer template.
+  - `aux/<file>|<page>.4se` — 62 files, **gzip → `bplist00`** (NSKeyedArchiver). **Decoded
+    2026-06-13 (`decode_4se.py`): these are NOT vector strokes** — each holds a
+    `scoreLayers`/`layers` graph of named annotation layers, and every layer's `image` is a
+    full-page RGBA **PNG** (already rasterized). `…|template.4se` is the per-document layer
+    schema (named layers + stable `layerID`s, no images). See [#4se-decode-result](#4se-decode-result).
 - **`manifest.json.stamps`** — `stamps.plist` (102 built-in) + `stamps2.plist` (2 custom);
   PNGs in `stamps/`.
 - **`setlists.json`** — here 3 lists (`Luen`/`Osaan`/`Treenaan`), each an ordered array of
@@ -50,10 +53,10 @@ out/
 | **Page rotation** | ✅ 2/70 | `pages[].rotation` | MVP-core (cheap once the crop transform exists). |
 | **Landscape crop variant** | ✅ | `pages[].croppedLandscape` | Needed for view modes 2/3 — crop differs by orientation. |
 | **Half-page-turn split** | ✅ 26/70 | `pages[].half` (0–1 fraction) + system `halfTurns` | **Directly powers view mode 2.** Divider position already stored per page — read `half` as the split point. |
-| **Ink annotations — vector** | ⚠️ partial | `aux/*.4se` (NSKeyedArchiver bplist) — **needs a decoder** | **High effort.** Defer; use raster overlays for MVP. Pairs with the "annotation tools" stretch goal. |
+| **Ink annotations — vector** | ❌ not in archive | manifest inline `ink` (`bluePoints`) exists for only **1/125 annotated pages**; `.4se` is raster, not strokes | **Not viable from the archive.** Freehand ink is stored rasterized. Defer any vector path to a re-annotate-on-Linux feature, not extraction. |
 | **Ink annotations — raster** | ✅ 125 pages | `aux/<file>\|<page>.png` | **MVP-core, easy.** Transparent full-page overlay at the page rect → instant annotations-on-cropped-page. |
 | **Text annotations** | ✅ 4 docs | `pages[].textAnnotations` (origin, size, font, color, `layerID`, `layerVisible`) | MVP-easy — positioned HTML text boxes. |
-| **Annotation layers** | ✅ | `layerID`/`layerVisible` on text; `template.4se` per doc | Medium — layer show/hide toggle. |
+| **Annotation layers** | ✅ | `template.4se` (named layers + `layerID`); page `.4se` carries one raster PNG per layer; `layerID`/`layerVisible` on text | Medium — layer show/hide toggle. The `.4se` gives a per-layer raster breakdown (e.g. a "Fingerings" layer) on top of the flat overlay. |
 | **Stamps** | ✅ 104 | `stamps/*.png` + manifest `stamps` plists | Low for a viewer; needed only for the editor. |
 | **Setlists / playsets** | ✅ | `setlists.json` (ordered `FilePath` refs) | **MVP-easy.** Maps 1:1 to "playsets." |
 | **Library metadata** (composer/genre/key/difficulty/labels/keywords) | ✅ | `documents[].meta` | Low — browsing/filtering. |
@@ -69,20 +72,47 @@ out/
    half-turn split (`half`), and landscape crop (`croppedLandscape`) are all stored per page.
    Mode 3 (Reflow / eye-tracking) has **no** archive backing — confirms it belongs in "future
    experiment."
-2. **The annotation fork is the main decision.** Rasterized `aux/*.png` overlays give correct
-   annotations on day one with near-zero parsing. The `.4se` vector layers
-   (NSKeyedArchiver bplist) are decode-heavy. **Recommend: ship raster overlays for the MVP
-   viewer; treat `.4se` decoding as phase 2** (and bundle it with editable "annotation tools").
+2. **The annotation fork is decided — raster, both for MVP and beyond.** The `.4se` decode
+   (below) settled the question: forScore stores freehand annotations **rasterized**, even in
+   the `.4se` "layer source." There is no vector geometry to recover (1/125 annotated pages
+   has inline `bluePoints`; the rest is pixels). So `aux/*.png` overlays are not just the easy
+   path — they're the *faithful* path. **Ship the flat `aux/*.png` overlay for the MVP viewer.**
+   Decode `.4se` only when you want the **per-layer toggle** (e.g. hide "Fingerings"), and even
+   then you're compositing PNGs, not rendering strokes.
 3. **Setlists/playsets are trivial** — already clean JSON in `setlists.json`.
+
+## .4se decode result (2026-06-13) {#4se-decode-result}
+
+Prototype: [`../decode_4se.py`](../decode_4se.py) (gzip → NSKeyedArchiver → resolve graph →
+extract layer PNGs). Surveyed all 62 `.4se` in `out/aux/`:
+
+- **No vector strokes anywhere.** Every page `.4se` is a `scoreLayers`/`layers` graph of named
+  annotation layers; each layer's `image` is a full-page RGBA PNG. Scanning all `$objects` for
+  any non-PNG binary payload across all 62 files returned **0** — there is no stroke geometry to
+  decode. The hoped-for "vector layer source" is rasterized.
+- **Two layers per page:** a document-wide named layer (here always `Fingerings`, with a stable
+  `layerID` defined in `…|template.4se`) from `scoreLayers`, plus a page-local default `Layer 1`
+  from `layers`. 50 page files → 100 layers, all 2160×2824.
+- **The flat overlay is the composite.** `alpha_composite(Fingerings, Layer 1)` equals
+  `aux/<file>|<page>.png` **pixel-for-pixel** (diff bbox `None`, per-channel max 0). The `.4se`
+  adds zero pixels — only the per-layer split.
+- **The flat overlay is the superset.** All 50 page `.4se` have a matching overlay PNG, but
+  **75 of the 125 overlay PNGs have no `.4se`** — so the flat overlay covers more annotated pages
+  than the layer files do. The overlay is the authoritative annotation render; `.4se` is a subset.
+- **Manifest cross-check:** inline vector `ink` exists for **1** page (`4 Impromptus op. 90.pdf`
+  p30); structured `textAnnotations` for 4 pages. Everything else is raster-only.
+
+**Decision:** raster overlays (`aux/*.png`) for the MVP; `.4se` decode reserved for the optional
+layer-toggle feature (compositing PNGs, not strokes). Vector ink is not recoverable from the
+archive and belongs to a future re-annotate-on-Linux feature, not extraction.
 
 ## Next steps (not yet done)
 
-- [ ] Prototype a `.4se` decoder: gunzip → NSKeyedArchiver plist → stroke geometry, to scope
-      whether vector annotations are viable for the web app. (Open question carried from
-      [../memory/forscore-open-questions.md](../memory/forscore-open-questions.md).)
+- [x] Prototype a `.4se` decoder — **done**, see above. Verdict: `.4se` is raster, not vector.
 - [ ] Confirm `aux/*.png` overlays are pixel-aligned to the PDF page box (so they can be
-      composited at the page rect without rescaling surprises).
-- [ ] Decide annotation strategy (raster overlay vs. vector decode) for the MVP.
+      composited at the page rect without rescaling surprises). Note the layer PNGs are
+      2160×2824 @ `UIScale` 2.0 — i.e. a 1080×1412 point page; verify against each PDF MediaBox.
+- [x] Decide annotation strategy — **raster overlay** for the MVP (see decode result above).
 
 ## Sources (forScore feature documentation)
 
