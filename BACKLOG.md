@@ -10,17 +10,17 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
 
 ## Reverse-engineering (next)
 
-- [ ] **Investigate `{%AUX_DIR%}/` `.4se` layer files.** The real archive holds ~187
-  auxiliary entries (now extracted to `out/aux/`): rendered page PNGs **and `.4se`
-  files**. Open question: are `.4se` files ForScore's real per-score **editable
-  annotation-layer** format — potentially richer/more faithful than the manifest's
-  `bluePoints`/`textAnnotations`? If so they may be the key to high-fidelity rendering
-  and round-trip. **Framing identified (2026-06-13):** each `.4se` is **gzip → `bplist00`**
-  (NSKeyedArchiver); `…|template.4se` is the per-document layer template. Manifest ink is
-  near-empty (1/70 docs inline `ink`, 4/70 `textAnnotations`), so `.4se` + the rasterized
-  `aux/*.png` overlays are where the real annotations live. Remaining work: decode the
-  NSKeyedArchiver graph to stroke geometry and compare against the manifest. See
-  [docs/feature-coverage.md](docs/feature-coverage.md) for the web-app impact.
+- [x] **Investigate `{%AUX_DIR%}/` `.4se` layer files.** Decoded 2026-06-13 with
+  [`decode_4se.py`](decode_4se.py). Each `.4se` is **gzip → `bplist00`** (NSKeyedArchiver)
+  holding a `scoreLayers`/`layers` graph of named annotation layers — but **every layer is a
+  rasterized full-page PNG, NOT vector strokes** (0 non-PNG payloads across all 62 files). A
+  page has a document-wide named layer (`Fingerings`, stable `layerID` from `…|template.4se`)
+  plus a page-local `Layer 1`; `alpha_composite` of the visible layers equals the flat
+  `aux/<file>|<page>.png` overlay pixel-for-pixel, and the flat overlay covers more pages
+  (125) than the `.4se` files do (50). **Verdict: `.4se` is NOT a richer/vector format** — its
+  only added value is the per-layer split (a layer-toggle UI). Vector ink is unrecoverable from
+  the archive (manifest inline `ink` exists for 1/125 annotated pages). Full write-up in
+  [docs/feature-coverage.md](docs/feature-coverage.md#4se-decode-result).
 
 ## Rendering (future)
 

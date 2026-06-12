@@ -1,6 +1,6 @@
 ---
 name: forscore-open-questions
-description: 4SB Archive container + annotation encoding SOLVED and an extractor built; one new open question remains — the {%AUX_DIR%} `.4se` layer files
+description: 4SB Archive container + annotation encoding SOLVED, extractor built, and the {%AUX_DIR%} `.4se` layer files decoded (raster per-layer PNGs, not vector) — all open questions answered
 metadata:
   type: project
 ---
@@ -78,7 +78,21 @@ stdlib-only tool, 22 passing tests, validated against the real archive. It dumps
 `out/pdfs/`, a restructured **lossless** `manifest.json` (`unparsed == {}` on real data),
 `stamps/*.png`, `setlists.json`. See README.md for the format spec, docs/plans/ for the design.
 
-## NEW open question — second placeholder `{%AUX_DIR%}/` and `.4se` layer files (found 2026-06-08)
+## `.4se` layer files — SOLVED (2026-06-13)
+
+`decode_4se.py` (repo root) decodes a `.4se`: gunzip → NSKeyedArchiver bplist → resolve graph.
+**Result: `.4se` is RASTER, not vector.** Each page `.4se` is a `scoreLayers`/`layers` graph of
+named annotation layers, and every layer's `image` is a full-page RGBA **PNG** — scanning all
+`$objects` across all 62 files for any non-PNG payload returned **0** stroke-geometry blobs. A
+page = a document-wide named layer (`Fingerings`, stable `layerID` from `…|template.4se`) +
+page-local `Layer 1`. `alpha_composite` of the visible layers == the flat `aux/<file>|<page>.png`
+overlay **pixel-for-pixel**; the flat overlay is the superset (125 overlay PNGs vs 50 `.4se`).
+Manifest inline vector `ink` (`bluePoints`) exists for only **1/125** annotated pages. So:
+**vector annotations are not recoverable from the archive** — ship raster `aux/*.png` overlays for
+the web-app MVP; `.4se` decode is only worth it for a per-layer show/hide toggle (compositing
+PNGs). See [docs/feature-coverage.md#4se-decode-result] and BACKLOG.md.
+
+## (orig) NEW open question — second placeholder `{%AUX_DIR%}/` and `.4se` layer files (found 2026-06-08)
 
 The real archive has **258 document entries, not ~71**: only ~71 are `{%DOCUMENTS_DIR%}/*.pdf`;
 **~187 are `{%AUX_DIR%}/` auxiliary assets** the extractor now routes to `out/aux/`. These are
