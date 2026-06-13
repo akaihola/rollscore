@@ -24,6 +24,9 @@
 # Git worktrees (isolated workspaces)
 /.worktrees/
 
+# Vendored front-end libs (large; re-fetch via web/vendor/README.md)
+/web/vendor/webgazer.js
+
 # Python
 __pycache__/
 *.pyc
