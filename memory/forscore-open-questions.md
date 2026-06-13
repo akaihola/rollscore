@@ -1,8 +1,10 @@
 ---
 name: forscore-open-questions
-description: 4SB Archive container + annotation encoding SOLVED, extractor built, and the {%AUX_DIR%} `.4se` layer files decoded (raster per-layer PNGs, not vector) — all open questions answered
-metadata:
+description: "4SB Archive container + annotation encoding SOLVED, extractor built, and the {%AUX_DIR%} `.4se` layer files decoded (raster per-layer PNGs, not vector) — all open questions answered"
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: eda0b83c-b3fb-481e-b214-23c91957b38d
 ---
 
 # ForScore 4SB Archive format — SOLVED (2026-06-07)
@@ -91,6 +93,25 @@ Manifest inline vector `ink` (`bluePoints`) exists for only **1/125** annotated 
 **vector annotations are not recoverable from the archive** — ship raster `aux/*.png` overlays for
 the web-app MVP; `.4se` decode is only worth it for a per-layer show/hide toggle (compositing
 PNGs). See [docs/feature-coverage.md#4se-decode-result] and BACKLOG.md.
+
+## Overlay REGISTRATION — corrected via forScore ground-truth export (2026-06-13)
+
+`aux/<file>|<page>.png` is a fixed **2160×2824** canvas (=612×800 pt, aspect 0.7649) constant
+across all pages regardless of MediaBox. **It is NOT raw-page-box aligned.** Ground truth: a
+forScore "annotated PDF (standardized aspect)" export of `4 La Maja y el Ruisenor` — the aux PNG
+is **pixel-identical** to the export's baked annotations, and the export's content scale equals
+the manifest **per-page `zoom`** on all 6 pages (1.18/1.11/1.10/1.08/1.12/1.10). ⟹ the overlay
+lives in forScore's **cropped/zoomed display space** (per-page `zoom`+`offset` applied, then
+placed in the standardized-aspect canvas). **Composite the overlay onto the CROPPED page render
+(needs manifest `zoom`/`offset`), NOT the raw page box; do not "composite then crop."** All
+archive rasters (aux PNG *and* `.4se` layer PNGs) are crop-baked → re-cropping/uncropping is
+lossy. The earlier "aspect-fit raw MediaBox, no manifest needed" conclusion was eyeball-only and
+WRONG; corrected in [docs/feature-coverage.md#overlay-registration]. Both forScore export modes
+(standardized 612×800 AND "native dimensions" 612×792) bake the crop zoom — aspect choice only
+changes the output page box, so **no uncropped-annotations export exists**. Overlay is
+**top-left anchored** in the canvas (8pt gap at bottom); native cropped view = overlay's top
+792/800. Still open: closed-form page→cropped-view transform from `rect`/`offset`/`trOffset`/
+`zoom` (horizontal `t ≈ −0.8·trOffset_x`, not fully pinned).
 
 ## (orig) NEW open question — second placeholder `{%AUX_DIR%}/` and `.4se` layer files (found 2026-06-08)
 
