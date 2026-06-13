@@ -21,6 +21,9 @@
 .zprofile
 .zshrc
 
+# Git worktrees (isolated workspaces)
+/.worktrees/
+
 # Python
 __pycache__/
 *.pyc
