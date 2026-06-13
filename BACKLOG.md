@@ -31,6 +31,20 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   shift ≈ `−0.8·trOffset_x`, not fully pinned). Full write-up in
   [docs/feature-coverage.md](docs/feature-coverage.md#overlay-registration).
 
+## Web app — gaze-scroll score reader
+
+- [ ] **Build the gaze-scroll score reader web app.** Design agreed 2026-06-13, see
+  [docs/plans/2026-06-13-gaze-scroll-web-app-design.md](docs/plans/2026-06-13-gaze-scroll-web-app-design.md).
+  Personal localhost tool: thin browser front-end + FastAPI/pymupdf backend reusing
+  `extract_4sb.py`; ingests a `.4sb` or pre-extracted `out/`; lazily renders per-page crop +
+  raster overlay composite (cached PNGs, empirical crop for now); chooser by setlist +
+  composer-sorted list with bookmark/piece jump and resume position; webcam **read-position
+  follower** auto-scroll (vertical-only, smoothed, on-music gated, coast-then-freeze) behind a
+  `GazeSource` abstraction; keyboard + tap-zone controls; per-session calibration. Next steps:
+  (1) **webcam gaze-accuracy spike** (make-or-break risk), then (2) implementation plan via
+  `superpowers:writing-plans`. Deferred within this effort: foot pedal, search/metadata
+  filtering, setlist auto-advance, smarter/persistent calibration.
+
 ## Rendering (future)
 
 - [ ] **Render annotations onto PDFs (flattened export).** Bake the extracted annotation
