@@ -22,6 +22,15 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   the archive (manifest inline `ink` exists for 1/125 annotated pages). Full write-up in
   [docs/feature-coverage.md](docs/feature-coverage.md#4se-decode-result).
 
+- [x] **Overlay registration solved (raster path).** Verified against forScore ground-truth
+  exports: `aux/*.png` is crop-baked — it lives in forScore's per-page cropped/zoomed display
+  space, **top-left anchored** in the 2160×2824 standardized canvas. Composite onto the cropped
+  page render (manifest `zoom`/`offset`), **not** the raw page box. Both export modes
+  (standardized + native dimensions) bake the crop → no uncropped-annotations export exists.
+  **Open:** closed-form `rect`/`offset`/`trOffset`/`zoom` → cropped-view transform (horizontal
+  shift ≈ `−0.8·trOffset_x`, not fully pinned). Full write-up in
+  [docs/feature-coverage.md](docs/feature-coverage.md#overlay-registration).
+
 ## Rendering (future)
 
 - [ ] **Render annotations onto PDFs (flattened export).** Bake the extracted annotation
