@@ -52,14 +52,15 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] 10.2 `WebGazerGazeSource` thin adapter (manual smoke)
   - [x] 10.3 Calibration overlay + recenter offset (pure math unit-tested) +
     `GET/PUT /api/calibration`
-- [~] **Phase 11 — Wire gaze loop + controls into the reader**
+- [x] **Phase 11 — Wire gaze loop + controls into the reader**
   - [x] 11.1 Controls module (keyboard + invisible tap zones) — jsdom-tested
   - [x] 11.2 Gaze loop drives the scroller; manual input preempts; `?fakegaze`
     dev mode; chooser forwards pieces + setlist context; pure `pieceJumpPage`
   - [x] 11.3 Setlist end stops and waits (`onScoreEnd`, unit-tested) + "open
     next" affordance wired
-  - [ ] Manual browser smoke pending (run the server in your own shell — see
-    below — then `?fakegaze=1` first, then with WebGazer)
+  - [x] Manual browser smoke (live CDP): `?fakegaze=1` scrolls 0→534px on Space;
+    fixed a NaN bug — `maxStepPerFrame` was missing from backend tuning defaults
+    (now present + guarded by a test). Real-webcam WebGazer feel is Phase 12.
 - [ ] **Phase 12 — Dev tuning panel**
 - [ ] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
   - Known issue to fix here: `crop.py` v1 overshoots the canvas when manifest
