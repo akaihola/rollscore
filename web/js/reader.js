@@ -94,27 +94,29 @@ export function throttle(fn, ms) {
 /**
  * Build the page strip for a score.
  *
- * Returns a `div.strip` of total scaled height containing one lazy `<img>` per
- * page (`data-page` = 1-based index). Images carry explicit width/height so the
- * scroll geometry is correct before any image has loaded.
+ * Returns a `div.strip` containing one lazy `<img>` per page (`data-page` =
+ * 1-based index). Each image is sized responsively — `width: 100%` of the strip
+ * with its height reserved before load via the page's `aspect-ratio` — so a
+ * render wider than the window scales down instead of being clipped, and the
+ * layout survives a resize. The scroll/resume maths derive heights from the
+ * *measured* strip width at runtime (see the geometry helpers above).
  */
-export function buildStrip({ file, pageDims, stripWidth, annotated = false }) {
-  const heights = scaledHeights(pageDims, stripWidth);
+export function buildStrip({ file, pageDims, annotated = false }) {
   const strip = document.createElement("div");
   strip.className = "strip";
 
-  pageDims.forEach((_dim, i) => {
+  pageDims.forEach((dim, i) => {
     const img = document.createElement("img");
     img.className = "page";
     img.loading = "lazy";
     img.dataset.page = String(i + 1);
     img.src = pageUrl(file, i + 1, annotated);
-    img.style.width = `${stripWidth}px`;
-    img.style.height = `${heights[i]}px`;
+    img.style.width = "100%";
+    img.style.height = "auto";
+    img.style.aspectRatio = `${dim.width} / ${dim.height}`;
     strip.append(img);
   });
 
-  strip.style.height = `${heights.reduce((a, b) => a + b, 0)}px`;
   return strip;
 }
 

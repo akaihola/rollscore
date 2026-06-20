@@ -10,8 +10,9 @@
   /* Reader: a fixed toolbar above a single scrollable page strip. */
   .reader { display: flex; flex-direction: column; height: 100%; }
   .toolbar { display: flex; gap: .5rem; padding: .5rem; background: #222; color: #fff; }
-  .scroller { flex: 1; overflow-y: auto; background: #444; }
-  .strip { margin: 0 auto; }
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; background: #444; }
+  .strip { width: 100%; }
+  /* Pages scale to the strip width (responsive width set inline); never clipped. */
   .page { display: block; }
   .error { color: #b00; padding: 1rem; }
 </style>

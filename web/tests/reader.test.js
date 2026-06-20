@@ -18,10 +18,9 @@ const pageDims = () => [
 
 describe("buildStrip", () => {
   const file = "Études, Op. 10.pdf";
-  const stripWidth = 1080;
 
   it("creates one lazy <img> per page with the correct page URL", () => {
-    const strip = buildStrip({ file, pageDims: pageDims(), stripWidth });
+    const strip = buildStrip({ file, pageDims: pageDims() });
     const imgs = [...strip.querySelectorAll("img")];
 
     expect(imgs).toHaveLength(2);
@@ -31,31 +30,28 @@ describe("buildStrip", () => {
   });
 
   it("tags each image with its 1-based page number", () => {
-    const strip = buildStrip({ file, pageDims: pageDims(), stripWidth });
+    const strip = buildStrip({ file, pageDims: pageDims() });
     const imgs = [...strip.querySelectorAll("img")];
     expect(imgs.map((i) => i.dataset.page)).toEqual(["1", "2"]);
   });
 
-  it("scales each page to the strip width preserving aspect ratio", () => {
-    const strip = buildStrip({ file, pageDims: pageDims(), stripWidth });
+  it("makes pages responsive: full container width, aspect-ratio reserved", () => {
+    // The image must scale to the container width (never its natural 2160px)
+    // and reserve its height before load via the page's aspect-ratio.
+    const strip = buildStrip({ file, pageDims: pageDims() });
     const imgs = [...strip.querySelectorAll("img")];
-    // 1080 × 2824/2160 = 1412
     for (const img of imgs) {
-      expect(parseFloat(img.style.width)).toBe(1080);
-      expect(parseFloat(img.style.height)).toBeCloseTo(1412, 6);
+      expect(img.style.width).toBe("100%");
+      expect(img.style.aspectRatio).toBe("2160 / 2824");
+      // No fixed pixel width that could exceed the window and clip.
+      expect(img.style.width).not.toMatch(/px/);
     }
-  });
-
-  it("gives the container a total height == sum of scaled page heights", () => {
-    const strip = buildStrip({ file, pageDims: pageDims(), stripWidth });
-    expect(parseFloat(strip.style.height)).toBeCloseTo(1412 * 2, 6);
   });
 
   it("honours the annotated flag in image URLs", () => {
     const strip = buildStrip({
       file,
       pageDims: pageDims(),
-      stripWidth,
       annotated: true,
     });
     const imgs = [...strip.querySelectorAll("img")];
@@ -133,14 +129,13 @@ describe("pageToScroll (piece jump)", () => {
 
 describe("setAnnotation", () => {
   const file = "Études, Op. 10.pdf";
-  const stripWidth = 1080;
   const dims = [
     { width: 2160, height: 2824 },
     { width: 2160, height: 2824 },
   ];
 
   it("swaps every page image between annotated and un-annotated URLs", () => {
-    const strip = buildStrip({ file, pageDims: dims, stripWidth });
+    const strip = buildStrip({ file, pageDims: dims });
     let imgs = [...strip.querySelectorAll("img")];
     expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
       pageUrl(file, 1, false),

@@ -51,20 +51,23 @@ async function openReader({ file, page }) {
     return;
   }
 
-  const stripWidth = scroller.clientWidth || window.innerWidth;
   let annotated = true;
-  const strip = buildStrip({ file, pageDims, stripWidth, annotated });
+  const strip = buildStrip({ file, pageDims, annotated });
   scroller.append(strip);
+
+  // Pages are responsive (width: 100%), so the geometry depends on the actual
+  // rendered width — measured fresh so it stays correct across a window resize.
+  const stripWidth = () => strip.clientWidth || scroller.clientWidth || window.innerWidth;
 
   // Restore: a saved resume wins; otherwise jump to the requested piece page.
   scroller.scrollTop = resume
-    ? computeResumeScroll(pageDims, stripWidth, resume)
-    : pageToScroll(pageDims, stripWidth, page);
+    ? computeResumeScroll(pageDims, stripWidth(), resume)
+    : pageToScroll(pageDims, stripWidth(), page);
 
   const save = throttle(() => {
     putResume(
       file,
-      scrollToResume(pageDims, stripWidth, scroller.scrollTop)
+      scrollToResume(pageDims, stripWidth(), scroller.scrollTop)
     ).catch(() => {});
   }, 1000);
   scroller.addEventListener("scroll", save);
