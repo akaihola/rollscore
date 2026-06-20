@@ -9,7 +9,8 @@
  *
  * Handlers (all optional): `togglePause`, `recenter`, `nudge(delta)` where delta
  * is +1 (forward) / -1 (back), `prevPiece`, `nextPiece`, `backToChooser`,
- * `toggleAnnotations`, `startCalibration`.
+ * `toggleAnnotations`, `startCalibration`, `captureCalibration` (record the
+ * cursor position as a gaze training point — see the reader).
  *
  * Returns an unbind function that detaches both listeners.
  */
@@ -27,6 +28,7 @@ const KEY_ACTIONS = {
   Escape: (h) => h.backToChooser?.(),
   a: (h) => h.toggleAnnotations?.(),
   c: (h) => h.startCalibration?.(),
+  g: (h) => h.captureCalibration?.(),
 };
 
 /**

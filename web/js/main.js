@@ -39,6 +39,7 @@ import {
   computeRecenterOffset,
   runCalibration,
   restoreCalibration,
+  serializeCalibration,
 } from "./gaze/calibration.js";
 import { bindControls } from "./controls.js";
 
@@ -259,10 +260,34 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     status.textContent = `Gaze unavailable: ${err.message}`;
     source = null;
   }
-  status.textContent = fake ? "fake gaze — press Space to start" : status.textContent;
+  if (source && !status.textContent) {
+    status.textContent = fake
+      ? "fake gaze — press Space to start"
+      : "calibrate: look at the cursor, press g (repeat across the screen) · Space to start";
+  }
   if (rafId === null) rafId = requestAnimationFrame(frame);
 
   // ---- Controls (keyboard + tap zones) ------------------------------------
+  // Track the cursor without training on it: WebGazer's own move/click listeners
+  // are removed (they made an idle gaze snap to the cursor), so calibration is
+  // opt-in — the player looks at the cursor and presses `g` to record a point.
+  let cursorX = 0;
+  let cursorY = 0;
+  const onMove = (e) => {
+    cursorX = e.clientX;
+    cursorY = e.clientY;
+  };
+  window.addEventListener("mousemove", onMove);
+
+  function captureCalibration() {
+    const wg = window.webgazer;
+    if (!wg?.recordScreenPosition) return;
+    wg.recordScreenPosition(cursorX, cursorY, "click");
+    const blob = serializeCalibration();
+    if (blob) putCalibration(blob).catch(() => {});
+    status.textContent = "calibration point added — look at the cursor, press g";
+  }
+
   function currentPage() {
     return scrollToResume(pageDims, stripWidth(), scroller.scrollTop).page;
   }
@@ -314,6 +339,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
       annotateBtn.textContent = `Annotations: ${annotated ? "on" : "off"}`;
     },
     startCalibration,
+    captureCalibration,
   });
 
   teardown = () => {
@@ -322,6 +348,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     source?.stop();
     unbind();
     clearAffordance();
+    window.removeEventListener("mousemove", onMove);
     window.removeEventListener("beforeunload", flush);
   };
 

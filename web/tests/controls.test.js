@@ -13,6 +13,7 @@ function spies() {
     backToChooser: vi.fn(),
     toggleAnnotations: vi.fn(),
     startCalibration: vi.fn(),
+    captureCalibration: vi.fn(),
   };
 }
 
@@ -74,6 +75,11 @@ describe("bindControls — keyboard", () => {
   it("c starts calibration", () => {
     keydown("c");
     expect(handlers.startCalibration).toHaveBeenCalledTimes(1);
+  });
+
+  it("g captures a calibration point at the cursor", () => {
+    keydown("g");
+    expect(handlers.captureCalibration).toHaveBeenCalledTimes(1);
   });
 
   it("an unhandled key fires nothing", () => {
