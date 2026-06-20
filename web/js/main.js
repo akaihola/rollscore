@@ -184,6 +184,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   let paused = true; // gaze starts disengaged; the player opts in (Space)
   let rafId = null;
   let nextAffordance = null; // the setlist "next is …" banner, when shown
+  let calibration = null; // active runCalibration handle (its dots), or null
 
   // ---- Dev tuning panel (hidden; toggled with `t`) ------------------------
   // Sliders edit `tuning` live: most params feed straight into the controller;
@@ -331,11 +332,17 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   }
 
   async function startCalibration() {
+    calibration?.cancel(); // re-pressing `c` restarts: clear the old grid first
     setPaused(true);
     status.textContent = "Calibrating — click each dot";
-    const blob = await runCalibration({ document, webgazer: window.webgazer });
-    if (blob) putCalibration(blob).catch(() => {});
-    status.textContent = "Calibrated";
+    const handle = runCalibration({ document, webgazer: window.webgazer });
+    calibration = handle;
+    const blob = await handle;
+    if (calibration === handle) calibration = null; // only the live one clears state
+    if (blob) {
+      putCalibration(blob).catch(() => {});
+      status.textContent = "Calibrated";
+    }
   }
 
   let teardown; // forward-declared so handlers can close over it
@@ -381,6 +388,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     source?.stop();
     unbind();
     clearAffordance();
+    calibration?.cancel(); // leaving for the library removes any open cal dots
     tuningPanel.remove();
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("beforeunload", flush);

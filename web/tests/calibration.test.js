@@ -54,5 +54,36 @@ describe("runCalibration", () => {
     await promise;
     expect(recordScreenPosition).toHaveBeenCalledTimes(9);
     expect(recordScreenPosition).toHaveBeenNthCalledWith(1, 10, 20, "click");
+    expect(document.querySelectorAll(".cal-dot").length).toBe(0); // cleaned up on completion
+  });
+
+  it("cancel() removes every dot and resolves the promise with null", async () => {
+    document.body.innerHTML = "";
+    const promise = runCalibration({
+      document,
+      webgazer: { recordScreenPosition: vi.fn() },
+      clicksPerPoint: 3,
+    });
+    expect(document.querySelectorAll(".cal-dot").length).toBe(9);
+
+    promise.cancel(); // abandon mid-calibration (e.g. press `c` again or leave)
+
+    expect(document.querySelectorAll(".cal-dot").length).toBe(0);
+    await expect(promise).resolves.toBeNull();
+  });
+
+  it("cancel() after completion is a harmless no-op", async () => {
+    document.body.innerHTML = "";
+    const promise = runCalibration({
+      document,
+      webgazer: { recordScreenPosition: vi.fn() },
+      clicksPerPoint: 1,
+    });
+    document
+      .querySelectorAll(".cal-dot")
+      .forEach((dot) => dot.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await promise;
+    expect(() => promise.cancel()).not.toThrow();
+    expect(document.querySelectorAll(".cal-dot").length).toBe(0);
   });
 });

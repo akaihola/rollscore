@@ -77,7 +77,13 @@ export function restoreCalibration(blob, storage = globalThis.localStorage) {
  * @param {any}     [opts.webgazer]        - WebGazer instance (defaults to global)
  * @param {number}  [opts.clicksPerPoint]  - clicks needed per dot (default 3)
  * @param {() => void} [opts.onProgress]    - called after each registered click
- * @returns {Promise<any>} the calibration blob (also passed to `persist` if given)
+ * The returned promise carries a `cancel()` method that removes the dots and
+ * resolves the promise with `null`. The reader calls it when the player abandons
+ * calibration — re-pressing `c` (which restarts) or leaving for the library — so
+ * the dots never outlive the calibration that created them.
+ *
+ * @returns {Promise<any> & {cancel: () => void}} resolves with the calibration
+ *   blob on completion, or `null` if cancelled; `.cancel()` aborts it.
  */
 export function runCalibration({
   document,
@@ -88,11 +94,13 @@ export function runCalibration({
   const xs = [0.1, 0.5, 0.9];
   const ys = [0.1, 0.5, 0.9];
 
-  return new Promise((resolve) => {
-    const dots = [];
-    let remaining = xs.length * ys.length;
+  const dots = [];
+  const cleanup = () => dots.forEach((d) => d.remove());
+  let resolveFn;
 
-    const cleanup = () => dots.forEach((d) => d.remove());
+  const promise = new Promise((resolve) => {
+    resolveFn = resolve;
+    let remaining = xs.length * ys.length;
 
     for (const fy of ys) {
       for (const fx of xs) {
@@ -123,4 +131,10 @@ export function runCalibration({
       }
     }
   });
+
+  promise.cancel = () => {
+    cleanup();
+    resolveFn(null); // a no-op once the promise has already settled
+  };
+  return promise;
 }
