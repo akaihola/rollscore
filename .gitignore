@@ -28,6 +28,9 @@
 # Vendored front-end libs (large; re-fetch via web/vendor/README.md)
 /web/vendor/webgazer.js
 
+# Node / front-end tooling
+web/node_modules/
+
 # Python
 __pycache__/
 *.pyc

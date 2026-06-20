@@ -1,0 +1,13 @@
+{
+  "name": "gazescroll-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "jsdom": "^24.0.0"
+  }
+}
