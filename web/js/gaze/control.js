@@ -115,3 +115,51 @@ export function stepController(state, input) {
   const next = Math.max(0, Math.min(maxScroll, scrollTop + step));
   return { scrollTop: next, state: { lastVelocity, coastRemainingMs } };
 }
+
+/**
+ * Compose the full gaze→scroll pipeline into a stateful controller.
+ *
+ * `update(sample, view) -> scrollTop` chains: smooth the gaze y → gate on the
+ * music column/confidence → estimate reading velocity over a short smoothed
+ * history → step the scroll controller. `sample` is `{t, x, y, confidence}`;
+ * `view` is `{viewportH, scrollTop, contentH}`. The returned `scrollTop` is what
+ * the caller should apply; thread the page's current scrollTop back in via
+ * `view` each frame.
+ */
+export function createGazeController(params) {
+  const smoother = createSmoother(params);
+  const velWindow = params.velocityWindow ?? 8;
+  const history = []; // {t, y: smoothedY}
+  let ctrlState = {};
+  let lastT = null;
+
+  return {
+    update(sample, view) {
+      const dtMs = lastT === null ? 0 : sample.t - lastT;
+      lastT = sample.t;
+
+      const smoothedY = smoother.push(sample.y);
+      const reading = isReading(
+        { x: sample.x, confidence: sample.confidence },
+        params
+      );
+
+      history.push({ t: sample.t, y: smoothedY });
+      if (history.length > velWindow) history.shift();
+      const readingVelocity = estimateReadingVelocity(history, params);
+
+      const out = stepController(ctrlState, {
+        smoothedY,
+        reading,
+        readingVelocity,
+        viewportH: view.viewportH,
+        scrollTop: view.scrollTop,
+        contentH: view.contentH,
+        dtMs,
+        params,
+      });
+      ctrlState = out.state;
+      return out.scrollTop;
+    },
+  };
+}
