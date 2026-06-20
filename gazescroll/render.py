@@ -28,3 +28,14 @@ def render_page_image(
     canvas = Image.new("RGBA", CANVAS_PX, (255, 255, 255, 255))
     canvas.alpha_composite(rendered, (0, 0))  # top-left anchored
     return canvas
+
+
+def composite_overlay(base: Image.Image, overlay: Image.Image) -> Image.Image:
+    """Alpha-composite the aux `overlay` onto `base` 1:1, top-left anchored.
+
+    Overlays are authored at CANVAS_PX already; the resize is a no-op safety net
+    for any that arrive at a different size.
+    """
+    if overlay.size != base.size:
+        overlay = overlay.resize(base.size)
+    return Image.alpha_composite(base, overlay)
