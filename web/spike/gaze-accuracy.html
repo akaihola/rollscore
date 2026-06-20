@@ -110,6 +110,13 @@
     }
     showPred.addEventListener("change", applyPredVisibility);
 
+    // The Brown build defaults faceMeshSolutionPath to the relative
+    // "./mediapipe/face_mesh", whose model files 404 (they were never shipped),
+    // which makes begin() throw the cryptic "t is not a function". Pin the
+    // FaceMesh assets to a known-good MediaPipe CDN version instead.
+    webgazer.params.faceMeshSolutionPath =
+      "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619";
+
     webgazer.setRegression("ridge").setGazeListener(function (data, clock) {
       if (!data) return;
       latestGaze = { x: data.x, y: data.y, t: clock };
