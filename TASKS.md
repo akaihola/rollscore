@@ -30,12 +30,12 @@ the checkboxes below as phases complete (keep them in sync with the branch).
 - [x] **Phase 0 — Webcam gaze-accuracy spike** (make-or-break). GO verdict recorded.
 - [x] **Phase 1 — Project scaffolding** (backend deps + package, Vitest, FastAPI app factory).
 - [x] **Phase 2 — Ingest layer** (`resolve_source`, `ensure_extracted`).
-- [~] **Phase 3 — Library service (chooser model)**
+- [x] **Phase 3 — Library service (chooser model)**
   - [x] 3.1 Load scores with metadata + page count
   - [x] 3.2 Composer-sorted grouping
   - [x] 3.3 Bookmarks → piece ranges
-  - [ ] 3.4 Setlists (ordered, resolved to scores)
-  - [ ] 3.5 Real-library smoke (skips without `out/`)
+  - [x] 3.4 Setlists (ordered, resolved to scores)
+  - [x] 3.5 Real-library smoke (skips without `out/`)
 - [ ] **Phase 4 — Render service** (crop + overlay composite + cache)
 - [ ] **Phase 5 — State store** (JSON)
 - [ ] **Phase 6 — FastAPI routes**
