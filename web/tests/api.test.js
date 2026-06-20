@@ -7,6 +7,8 @@ import {
   putResume,
   getTuning,
   putTuning,
+  getCalibration,
+  putCalibration,
 } from "../js/api.js";
 
 describe("api client", () => {
@@ -95,6 +97,29 @@ describe("api client", () => {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ setpoint: 0.35 }),
+    });
+  });
+
+  it("getCalibration fetches /api/calibration", async () => {
+    const blob = { data: [[0.1, 0.2]] };
+    fetch.mockResolvedValue({ ok: true, json: async () => blob });
+
+    const result = await getCalibration();
+
+    expect(fetch).toHaveBeenCalledWith("/api/calibration");
+    expect(result).toEqual(blob);
+  });
+
+  it("putCalibration PUTs the blob as JSON", async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    const blob = { data: [[0.3, 0.4]] };
+
+    await putCalibration(blob);
+
+    expect(fetch).toHaveBeenCalledWith("/api/calibration", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(blob),
     });
   });
 });

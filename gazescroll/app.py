@@ -11,8 +11,9 @@ from __future__ import annotations
 import os
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -108,6 +109,15 @@ def create_app(
     @app.put("/api/tuning")
     def put_tuning(body: dict, request: Request) -> dict:
         get_store(request).set_tuning(body)
+        return {"ok": True}
+
+    @app.get("/api/calibration")
+    def get_calibration(request: Request) -> Any:
+        return get_store(request).get_calibration()
+
+    @app.put("/api/calibration")
+    def put_calibration(body: Any = Body(...), *, request: Request) -> dict:
+        get_store(request).set_calibration(body)
         return {"ok": True}
 
     @app.get("/")

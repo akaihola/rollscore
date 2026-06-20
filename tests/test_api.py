@@ -120,3 +120,13 @@ def test_tuning_round_trip(client):
     got = client.get("/api/tuning").json()
     assert got["setpoint"] == 0.6
     assert got["deadzone"] == base["deadzone"]  # untouched default preserved
+
+
+def test_calibration_round_trip(client):
+    # No calibration stored yet.
+    assert client.get("/api/calibration").json() is None
+
+    blob = {"data": [[0.1, 0.2], [0.3, 0.4]], "settings": {"k": 1}}
+    r = client.put("/api/calibration", json=blob)
+    assert r.status_code == 200
+    assert client.get("/api/calibration").json() == blob

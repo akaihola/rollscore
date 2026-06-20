@@ -57,3 +57,13 @@ export function getTuning() {
 export function putTuning(params) {
   return putJson("/api/tuning", params);
 }
+
+/** Fetch the saved WebGazer calibration blob (or null). */
+export function getCalibration() {
+  return getJson("/api/calibration");
+}
+
+/** Persist the WebGazer calibration blob. */
+export function putCalibration(blob) {
+  return putJson("/api/calibration", blob);
+}
