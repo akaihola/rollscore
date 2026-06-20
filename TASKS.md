@@ -43,7 +43,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] 4.4 Cache composited PNGs by mtime + annotation flag (1-based→0-based)
   - [x] 4.5 Page-dimensions metadata helper
 - [x] **Phase 5 — State store** (JSON: resume/tuning/calibration, atomic write)
-- [ ] **Phase 6 — FastAPI routes**
+- [x] **Phase 6 — FastAPI routes** (`/api/library`, lazy page-image + page-dims, resume + tuning; 503 without a source)
 - [ ] **Phase 7 — Front-end: API client + chooser view**
 - [ ] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
 - [ ] **Phase 9 — Gaze control pure functions** (unit-tested core)
