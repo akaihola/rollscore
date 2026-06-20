@@ -70,3 +70,48 @@ export function estimateReadingVelocity(samples, { maxVelocity }) {
   const slope = num / den;
   return Math.max(0, Math.min(maxVelocity, slope));
 }
+
+/**
+ * One frame of the scroll controller. Pure: `(state, input) -> {scrollTop, state}`.
+ *
+ * While reading, it nudges the page so the smoothed gaze point sits at the
+ * `setpoint` fraction of the viewport: a dead-zone suppresses jitter, the step
+ * is bounded by `min(maxStepPerFrame, readingVelocity·dt, |error|)`, and it is
+ * forward-only (an above-setpoint gaze never scrolls back). When reading stops
+ * it coasts at the last velocity for `coastMs`, then freezes. The result is
+ * always clamped to `[0, contentH - viewportH]`.
+ *
+ * Safety invariant (relied on in tests): `scrollTop` is non-decreasing and each
+ * frame's delta is ≤ `maxStepPerFrame`.
+ */
+export function stepController(state, input) {
+  const {
+    smoothedY, reading, readingVelocity,
+    viewportH, scrollTop, contentH, dtMs, params,
+  } = input;
+  const { setpoint, deadzone, maxStepPerFrame, coastMs } = params;
+
+  const maxScroll = Math.max(0, contentH - viewportH);
+  const error = smoothedY - viewportH * setpoint; // +ve → gaze below setpoint
+
+  let lastVelocity = state.lastVelocity ?? 0;
+  let coastRemainingMs = state.coastRemainingMs ?? coastMs;
+  let step = 0;
+
+  if (reading) {
+    lastVelocity = readingVelocity;
+    coastRemainingMs = coastMs;
+    if (error > deadzone) {
+      step = Math.min(maxStepPerFrame, readingVelocity * dtMs, error);
+    }
+  } else {
+    coastRemainingMs -= dtMs;
+    if (coastRemainingMs > 0) {
+      step = Math.min(maxStepPerFrame, lastVelocity * dtMs);
+    }
+  }
+
+  step = Math.max(0, step); // forward-only
+  const next = Math.max(0, Math.min(maxScroll, scrollTop + step));
+  return { scrollTop: next, state: { lastVelocity, coastRemainingMs } };
+}

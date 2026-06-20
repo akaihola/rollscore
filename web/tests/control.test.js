@@ -3,6 +3,7 @@ import {
   createSmoother,
   isReading,
   estimateReadingVelocity,
+  stepController,
 } from "../js/gaze/control.js";
 
 describe("smoother", () => {
@@ -72,5 +73,75 @@ describe("estimateReadingVelocity", () => {
   it("returns 0 with fewer than two samples", () => {
     expect(estimateReadingVelocity([{ t: 0, y: 5 }], { maxVelocity: 10 })).toBe(0);
     expect(estimateReadingVelocity([], { maxVelocity: 10 })).toBe(0);
+  });
+});
+
+describe("stepController", () => {
+  it("scrolls forward when reading point is below setpoint", () => {
+    const params = { setpoint: 0.4, deadzone: 10, maxStepPerFrame: 8, coastMs: 800 };
+    const out = stepController(
+      {},
+      {
+        smoothedY: 600, reading: true, readingVelocity: 50,
+        viewportH: 1000, scrollTop: 0, contentH: 10000, dtMs: 33, params,
+      }
+    );
+    expect(out.scrollTop).toBeGreaterThan(0);
+    expect(out.scrollTop).toBeLessThanOrEqual(8); // velocity-limited, no jump
+  });
+
+  it("does nothing inside the dead-zone", () => {
+    const params = { setpoint: 0.4, deadzone: 50, maxStepPerFrame: 8, coastMs: 800 };
+    const out = stepController(
+      {},
+      {
+        smoothedY: 410, reading: true, readingVelocity: 0,
+        viewportH: 1000, scrollTop: 100, contentH: 10000, dtMs: 33, params,
+      }
+    );
+    expect(out.scrollTop).toBe(100);
+  });
+
+  it("never scrolls backward", () => {
+    const params = { setpoint: 0.4, deadzone: 10, maxStepPerFrame: 8, coastMs: 800 };
+    const out = stepController(
+      {},
+      {
+        smoothedY: 100, reading: true, readingVelocity: 0, // gaze above setpoint
+        viewportH: 1000, scrollTop: 500, contentH: 10000, dtMs: 33, params,
+      }
+    );
+    expect(out.scrollTop).toBe(500); // forward-only clamp
+  });
+
+  it("coasts when not reading, then freezes", () => {
+    const params = { setpoint: 0.4, deadzone: 10, maxStepPerFrame: 8, coastMs: 100 };
+    let st = { lastVelocity: 60 };
+    let out = stepController(st, {
+      smoothedY: 600, reading: false, readingVelocity: 0,
+      viewportH: 1000, scrollTop: 0, contentH: 10000, dtMs: 50, params,
+    });
+    expect(out.scrollTop).toBeGreaterThan(0); // still coasting at 50ms
+    out = stepController(out.state, {
+      smoothedY: 600, reading: false, readingVelocity: 0,
+      viewportH: 1000, scrollTop: out.scrollTop, contentH: 10000, dtMs: 100, params,
+    });
+    const frozen = stepController(out.state, {
+      smoothedY: 600, reading: false, readingVelocity: 0,
+      viewportH: 1000, scrollTop: out.scrollTop, contentH: 10000, dtMs: 100, params,
+    });
+    expect(frozen.scrollTop).toBe(out.scrollTop); // past coast window → frozen
+  });
+
+  it("never exceeds content height", () => {
+    const params = { setpoint: 0.4, deadzone: 1, maxStepPerFrame: 1000, coastMs: 800 };
+    const out = stepController(
+      {},
+      {
+        smoothedY: 999, reading: true, readingVelocity: 9999,
+        viewportH: 1000, scrollTop: 9500, contentH: 10000, dtMs: 33, params,
+      }
+    );
+    expect(out.scrollTop).toBeLessThanOrEqual(10000 - 1000);
   });
 });
