@@ -23,3 +23,18 @@ def test_scores_have_meta_and_pagecount(tmp_path: Path):
     assert score.title == "Sonata"
     assert score.composer == "Beethoven"
     assert score.page_count == 3
+
+
+def test_by_composer_sorted_groups(tmp_path: Path):
+    manifest = {"documents": {
+        "b.pdf": {"meta": {"title": "Zelda", "composer": "Bach"}, "pages": {"1": {}}},
+        "a.pdf": {"meta": {"title": "Aria", "composer": "Bach"}, "pages": {"1": {}}},
+        "c.pdf": {"meta": {"title": "Clair", "composer": "Debussy"}, "pages": {"1": {}}},
+        "n.pdf": {"meta": {"title": "Nameless"}, "pages": {"1": {}}},
+    }}
+    lib = load_library(_make_root(tmp_path, manifest))
+    groups = lib.by_composer()
+    assert [g.composer for g in groups] == ["Bach", "Debussy", "(Unknown)"]
+    # scores sorted by title within a group
+    assert [s.title for s in groups[0].scores] == ["Aria", "Zelda"]
+    assert [s.title for s in groups[2].scores] == ["Nameless"]

@@ -38,11 +38,43 @@ class Score:
     page_count: int
 
 
+@dataclass(frozen=True)
+class ComposerGroup:
+    """Scores by one composer, title-sorted."""
+
+    composer: str
+    scores: list[Score]
+
+
+UNKNOWN_COMPOSER = "(Unknown)"
+
+
 @dataclass
 class Library:
     """The full chooser model: scores keyed by (NFC) filename."""
 
     scores: dict[str, Score] = field(default_factory=dict)
+
+    def by_composer(self) -> list[ComposerGroup]:
+        """Group scores by composer, sorted by composer then title.
+
+        Scores with no composer are grouped under ``(Unknown)``, sorted last.
+        """
+        groups: dict[str, list[Score]] = {}
+        for score in self.scores.values():
+            key = score.composer or UNKNOWN_COMPOSER
+            groups.setdefault(key, []).append(score)
+
+        def composer_key(name: str) -> tuple[int, str]:
+            return (1, "") if name == UNKNOWN_COMPOSER else (0, name)
+
+        return [
+            ComposerGroup(
+                composer=name,
+                scores=sorted(groups[name], key=lambda s: s.title),
+            )
+            for name in sorted(groups, key=composer_key)
+        ]
 
 
 def load_library(root: ExtractionRoot) -> Library:
