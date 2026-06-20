@@ -29,6 +29,15 @@ def _pdf_page_count(pdf_path: Path) -> int:
 
 
 @dataclass(frozen=True)
+class Bookmark:
+    """A piece range within a multi-piece PDF (1-based, inclusive)."""
+
+    title: str
+    first_page: int
+    last_page: int
+
+
+@dataclass(frozen=True)
 class Score:
     """A single PDF document with its forScore metadata."""
 
@@ -36,6 +45,19 @@ class Score:
     title: str
     composer: str
     page_count: int
+    pieces: list[Bookmark] = field(default_factory=list)
+
+
+def _parse_bookmarks(meta: dict) -> list[Bookmark]:
+    pieces = [
+        Bookmark(
+            title=bm.get("Title", ""),
+            first_page=bm["First Page"],
+            last_page=bm["Last Page"],
+        )
+        for bm in meta.get("bookmarks", [])
+    ]
+    return sorted(pieces, key=lambda b: b.first_page)
 
 
 @dataclass(frozen=True)
@@ -95,6 +117,7 @@ def load_library(root: ExtractionRoot) -> Library:
             title=meta.get("title", filename),
             composer=meta.get("composer", ""),
             page_count=page_count,
+            pieces=_parse_bookmarks(meta),
         )
 
     return Library(scores=scores)

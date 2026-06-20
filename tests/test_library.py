@@ -38,3 +38,27 @@ def test_by_composer_sorted_groups(tmp_path: Path):
     # scores sorted by title within a group
     assert [s.title for s in groups[0].scores] == ["Aria", "Zelda"]
     assert [s.title for s in groups[2].scores] == ["Nameless"]
+
+
+def test_bookmarks_become_pieces(tmp_path: Path):
+    manifest = {"documents": {
+        "Etudes.pdf": {
+            "meta": {
+                "title": "Etudes",
+                "composer": "Chopin",
+                "bookmarks": [
+                    {"Title": "No. 2", "First Page": 4, "Last Page": 6},
+                    {"Title": "No. 1", "First Page": 1, "Last Page": 3},
+                ],
+            },
+            "pages": {"1": {}, "2": {}, "3": {}, "4": {}, "5": {}, "6": {}},
+        },
+        "Plain.pdf": {"meta": {"title": "Plain"}, "pages": {"1": {}}},
+    }}
+    lib = load_library(_make_root(tmp_path, manifest))
+    pieces = lib.scores["Etudes.pdf"].pieces
+    assert [(p.title, p.first_page, p.last_page) for p in pieces] == [
+        ("No. 1", 1, 3),
+        ("No. 2", 4, 6),
+    ]
+    assert lib.scores["Plain.pdf"].pieces == []
