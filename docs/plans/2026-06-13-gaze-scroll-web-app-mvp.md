@@ -1,5 +1,9 @@
 # Gaze-scroll Score Reader — MVP Implementation Plan
 
+> **Phase status is tracked in `TASKS.md` at the repo root (on `main`)** — this doc
+> defines *what* each phase entails; `TASKS.md` records *which* phase is done. Keep
+> the two in sync as phases complete.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Each task is TDD (@superpowers:test-driven-development): write the failing test, watch it fail, implement, watch it pass, commit. When a bug or surprise appears, stop and use @superpowers:systematic-debugging. Request review at phase boundaries with @superpowers:requesting-code-review.
 
 **Goal:** A personal, localhost web app that reads your annotated forScore library, renders each score as a continuous cropped+annotated vertical strip, and auto-scrolls it from webcam gaze so you can play hands-free.
