@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getLibrary,
+  getPages,
   pageUrl,
   getResume,
   putResume,
@@ -29,6 +30,21 @@ describe("api client", () => {
   it("getLibrary throws on a non-ok response", async () => {
     fetch.mockResolvedValue({ ok: false, status: 503 });
     await expect(getLibrary()).rejects.toThrow(/503/);
+  });
+
+  it("getPages fetches the per-score page-dimensions endpoint", async () => {
+    const dims = [
+      { width: 2160, height: 2824 },
+      { width: 2160, height: 2824 },
+    ];
+    fetch.mockResolvedValue({ ok: true, json: async () => dims });
+
+    const result = await getPages("Études, Op. 10.pdf");
+
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/score/${encodeURIComponent("Études, Op. 10.pdf")}/pages`
+    );
+    expect(result).toEqual(dims);
   });
 
   it("pageUrl URL-encodes the score file and sets the annotated flag", () => {

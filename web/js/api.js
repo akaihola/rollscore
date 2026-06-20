@@ -27,6 +27,11 @@ export function getLibrary() {
   return getJson("/api/library");
 }
 
+/** Fetch the per-page dimensions `[{width, height}, …]` for a score. */
+export function getPages(file) {
+  return getJson(`/api/score/${encodeURIComponent(file)}/pages`);
+}
+
 /** Build the page-image URL for a score, page (1-based), and annotation flag. */
 export function pageUrl(file, page, annotated) {
   const seg = encodeURIComponent(file);
