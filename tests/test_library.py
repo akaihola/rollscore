@@ -62,3 +62,31 @@ def test_bookmarks_become_pieces(tmp_path: Path):
         ("No. 2", 4, 6),
     ]
     assert lib.scores["Plain.pdf"].pieces == []
+
+
+def test_setlists_resolve_to_ordered_scores(tmp_path: Path):
+    manifest = {"documents": {
+        "a.pdf": {"meta": {"title": "Aria"}, "pages": {"1": {}}},
+        "b.pdf": {"meta": {"title": "Berceuse"}, "pages": {"1": {}}},
+    }}
+    setlists = {"Recital": [
+        {"FilePath": "b.pdf", "Title": "Berceuse"},
+        {"FilePath": "a.pdf", "Title": "Aria"},
+    ]}
+    lib = load_library(_make_root(tmp_path, manifest, setlists))
+    assert list(lib.setlists) == ["Recital"]
+    assert [s.title for s in lib.setlists["Recital"]] == ["Berceuse", "Aria"]
+    # entries resolve to the same Score objects held in lib.scores
+    assert lib.setlists["Recital"][1] is lib.scores["a.pdf"]
+
+
+def test_setlists_skip_missing_filepaths(tmp_path: Path):
+    manifest = {"documents": {
+        "a.pdf": {"meta": {"title": "Aria"}, "pages": {"1": {}}},
+    }}
+    setlists = {"Recital": [
+        {"FilePath": "gone.pdf", "Title": "Missing"},
+        {"FilePath": "a.pdf", "Title": "Aria"},
+    ]}
+    lib = load_library(_make_root(tmp_path, manifest, setlists))
+    assert [s.title for s in lib.setlists["Recital"]] == ["Aria"]

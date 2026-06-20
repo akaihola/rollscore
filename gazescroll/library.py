@@ -10,6 +10,7 @@ NFC so lookups with ordinary NFC string literals succeed.
 from __future__ import annotations
 
 import json
+import logging
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +18,8 @@ from pathlib import Path
 import pymupdf  # PyMuPDF; module also importable as `fitz`
 
 from gazescroll.ingest import ExtractionRoot
+
+logger = logging.getLogger(__name__)
 
 
 def _nfc(s: str) -> str:
@@ -76,6 +79,7 @@ class Library:
     """The full chooser model: scores keyed by (NFC) filename."""
 
     scores: dict[str, Score] = field(default_factory=dict)
+    setlists: dict[str, list[Score]] = field(default_factory=dict)
 
     def by_composer(self) -> list[ComposerGroup]:
         """Group scores by composer, sorted by composer then title.
@@ -120,4 +124,33 @@ def load_library(root: ExtractionRoot) -> Library:
             pieces=_parse_bookmarks(meta),
         )
 
-    return Library(scores=scores)
+    raw_setlists = json.loads(root.setlists_path.read_text())
+    setlists = _resolve_setlists(raw_setlists, scores)
+
+    return Library(scores=scores, setlists=setlists)
+
+
+def _resolve_setlists(
+    raw: dict[str, list[dict]], scores: dict[str, Score]
+) -> dict[str, list[Score]]:
+    """Resolve each setlist's ordered ``FilePath`` refs to ``Score`` objects.
+
+    Entries whose ``FilePath`` is absent from the loaded scores are logged and
+    skipped rather than crashing the load.
+    """
+    resolved: dict[str, list[Score]] = {}
+    for name, entries in raw.items():
+        ordered: list[Score] = []
+        for entry in entries:
+            filename = _nfc(entry["FilePath"])
+            score = scores.get(filename)
+            if score is None:
+                logger.warning(
+                    "setlist %r references missing document %r; skipping",
+                    name,
+                    filename,
+                )
+                continue
+            ordered.append(score)
+        resolved[name] = ordered
+    return resolved
