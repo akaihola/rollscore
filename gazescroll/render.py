@@ -103,3 +103,19 @@ def render_cached(
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(cache_path)
     return cache_path
+
+
+def page_dimensions(root: ExtractionRoot, score_file: str) -> list[dict]:
+    """Per-page rendered size — the layout contract the front-end reads.
+
+    Every page renders into the standardized canvas, so each entry is CANVAS_PX
+    for MVP; the list length is the score's page count.
+    """
+    raw_name, doc = _resolve_doc(root, score_file)
+    pdf_path = root.pdfs_dir / raw_name
+    if pdf_path.exists():
+        with pymupdf.open(pdf_path) as pdf:
+            count = pdf.page_count
+    else:
+        count = len(doc.get("pages", {}))
+    return [{"width": CANVAS_PX[0], "height": CANVAS_PX[1]} for _ in range(count)]

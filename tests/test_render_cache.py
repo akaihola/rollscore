@@ -6,7 +6,7 @@ from PIL import Image
 from gazescroll import render as render_mod
 from gazescroll.crop import CANVAS_PX
 from gazescroll.ingest import ExtractionRoot
-from gazescroll.render import render_cached
+from gazescroll.render import page_dimensions, render_cached
 
 
 def _make_root(tmp_path):
@@ -70,3 +70,10 @@ def test_render_cached_hits_and_variants(tmp_path, monkeypatch):
     # Annotated has the overlay's red pixel; plain does not.
     assert Image.open(p1).convert("RGBA").getpixel((10, 10))[:3] == (255, 0, 0)
     assert Image.open(p_plain).convert("RGBA").getpixel((10, 10))[:3] != (255, 0, 0)
+
+
+def test_page_dimensions(tmp_path):
+    root = _make_root(tmp_path)
+    dims = page_dimensions(root, "Sonata.pdf")
+    assert len(dims) == 2  # 2-page synthetic PDF
+    assert dims[0] == {"width": CANVAS_PX[0], "height": CANVAS_PX[1]}
