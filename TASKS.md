@@ -61,7 +61,10 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] Manual browser smoke (live CDP): `?fakegaze=1` scrolls 0→534px on Space;
     fixed a NaN bug — `maxStepPerFrame` was missing from backend tuning defaults
     (now present + guarded by a test). Real-webcam WebGazer feel is Phase 12.
-- [ ] **Phase 12 — Dev tuning panel**
+- [x] **Phase 12 — Dev tuning panel** (`buildTuningPanel` jsdom-tested;
+  `createGazeController.setParams` retunes live; `t` toggles; throttled
+  `PUT /api/tuning` persists. Headless Playwright smoke
+  (`web/tools/tuning_smoke.py`) passed: 10 sliders, toggle, live PUT + GET.)
 - [ ] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
   - Known issue to fix here: `crop.py` v1 overshoots the canvas when manifest
     `zoom > 1` (page maps wider than 2160px → side margins clipped, e.g. the
