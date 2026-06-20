@@ -7,12 +7,16 @@ the archive mtime, score, page, and annotation flag.
 """
 from __future__ import annotations
 
+import json
+import re
+import unicodedata
 from pathlib import Path
 
 import pymupdf
 from PIL import Image
 
 from gazescroll.crop import CANVAS_PX, page_to_canvas_matrix
+from gazescroll.ingest import ExtractionRoot, _cache_dir
 
 
 def render_page_image(
@@ -39,3 +43,63 @@ def composite_overlay(base: Image.Image, overlay: Image.Image) -> Image.Image:
     if overlay.size != base.size:
         overlay = overlay.resize(base.size)
     return Image.alpha_composite(base, overlay)
+
+
+def _nfc(s: str) -> str:
+    return unicodedata.normalize("NFC", s)
+
+
+def _slug(name: str) -> str:
+    """Filesystem-safe single path segment for a score filename."""
+    return re.sub(r"[^\w.\- ]", "_", name)
+
+
+def _resolve_doc(root: ExtractionRoot, score_file: str) -> tuple[str, dict]:
+    """Map an NFC score filename to its raw manifest key + document entry.
+
+    Filenames are stored NFD on disk/in the manifest; callers pass NFC.
+    """
+    manifest = json.loads(root.manifest_path.read_text())
+    documents = manifest.get("documents", {})
+    target = _nfc(score_file)
+    for raw_name, doc in documents.items():
+        if _nfc(raw_name) == target:
+            return raw_name, doc
+    raise KeyError(f"score not in manifest: {score_file!r}")
+
+
+def render_cached(
+    root: ExtractionRoot, score_file: str, page: int, annotated: bool
+) -> Path:
+    """Render (or reuse a cached) composited PNG for a 1-based page.
+
+    Cached under ``{cache}/render/{mtime_token}/{slug}/{page}-{ann|plain}.png``,
+    so a changed archive (newer mtime) yields a fresh cache namespace. The plain
+    and annotated variants are distinct files.
+    """
+    variant = "ann" if annotated else "plain"
+    cache_path = (
+        _cache_dir()
+        / "render"
+        / root.mtime_token
+        / _slug(score_file)
+        / f"{page}-{variant}.png"
+    )
+    if cache_path.exists():
+        return cache_path
+
+    raw_name, doc = _resolve_doc(root, score_file)
+    page_params = doc.get("pages", {}).get(str(page), {})
+    pdf_path = root.pdfs_dir / raw_name
+
+    image = render_page_image(pdf_path, page_index=page - 1, page_params=page_params)
+
+    if annotated:
+        overlay_path = root.aux_dir / f"{raw_name}|{page}.png"
+        if overlay_path.exists():
+            with Image.open(overlay_path) as overlay:
+                image = composite_overlay(image, overlay.convert("RGBA"))
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(cache_path)
+    return cache_path
