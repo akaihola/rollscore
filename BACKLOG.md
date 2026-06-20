@@ -2,6 +2,11 @@
 
 Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · `[x]` done.
 
+> **In-flight work + phase status live in [TASKS.md](TASKS.md).** The gaze-scroll
+> web app is being implemented there against a phased plan on branch
+> `plan-gaze-scroll-mvp` (worktree `.worktrees/plan-gaze-scroll-mvp/`). This file
+> is the longer wishlist; `TASKS.md` is the current execution tracker.
+
 ## Extractor
 
 - [x] **Raw lossless extractor** — dump original documents + restructured `manifest.json`
@@ -40,10 +45,13 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   raster overlay composite (cached PNGs, empirical crop for now); chooser by setlist +
   composer-sorted list with bookmark/piece jump and resume position; webcam **read-position
   follower** auto-scroll (vertical-only, smoothed, on-music gated, coast-then-freeze) behind a
-  `GazeSource` abstraction; keyboard + tap-zone controls; per-session calibration. Next steps:
-  (1) **webcam gaze-accuracy spike** (make-or-break risk), then (2) implementation plan via
-  `superpowers:writing-plans`. Deferred within this effort: foot pedal, search/metadata
-  filtering, setlist auto-advance, smarter/persistent calibration.
+  `GazeSource` abstraction; keyboard + tap-zone controls; per-session calibration.
+  **Status: in progress — see [TASKS.md](TASKS.md) for live phase status.** The webcam
+  gaze-accuracy spike (the make-or-break risk) returned a GO verdict, the phased
+  implementation plan is written
+  (`docs/plans/2026-06-13-gaze-scroll-web-app-mvp.md` on branch `plan-gaze-scroll-mvp`),
+  and Phases 0–2 plus part of Phase 3 are done. Deferred within this effort: foot pedal,
+  search/metadata filtering, setlist auto-advance, smarter/persistent calibration.
 
 ## Rendering (future)
 
