@@ -18,6 +18,7 @@ import {
   getResume,
   putResume,
   getTuning,
+  putTuning,
   getCalibration,
   putCalibration,
 } from "./api.js";
@@ -42,6 +43,7 @@ import {
   serializeCalibration,
 } from "./gaze/calibration.js";
 import { bindControls } from "./controls.js";
+import { buildTuningPanel } from "./tuning.js";
 
 const app = document.getElementById("app");
 
@@ -182,6 +184,33 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   let paused = true; // gaze starts disengaged; the player opts in (Space)
   let rafId = null;
   let nextAffordance = null; // the setlist "next is …" banner, when shown
+
+  // ---- Dev tuning panel (hidden; toggled with `t`) ------------------------
+  // Sliders edit `tuning` live: most params feed straight into the controller;
+  // the column edges are stored as fractions but the controller wants pixels.
+  // Changes are persisted (throttled) so a good tuning survives a reload.
+  const pendingTuning = {}; // accumulates dirty keys between throttled PUTs
+  const flushTuning = throttle(() => {
+    const keys = Object.keys(pendingTuning);
+    if (keys.length === 0) return;
+    const batch = {};
+    for (const k of keys) {
+      batch[k] = pendingTuning[k];
+      delete pendingTuning[k];
+    }
+    putTuning(batch).catch(() => {});
+  }, 500);
+  const tuningPanel = buildTuningPanel(tuning, (key, value) => {
+    tuning[key] = value;
+    pendingTuning[key] = value;
+    const w = scroller.getBoundingClientRect().width;
+    const update =
+      key === "columnX0" || key === "columnX1" ? { [key]: value * w } : { [key]: value };
+    controller.setParams(update);
+    flushTuning();
+  });
+  tuningPanel.hidden = true;
+  document.body.append(tuningPanel);
 
   function setPaused(p) {
     paused = p;
@@ -340,14 +369,19 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     },
     startCalibration,
     captureCalibration,
+    toggleTuning: () => {
+      tuningPanel.hidden = !tuningPanel.hidden;
+    },
   });
 
   teardown = () => {
     save.flush();
+    flushTuning.flush();
     cancelAnimationFrame(rafId);
     source?.stop();
     unbind();
     clearAffordance();
+    tuningPanel.remove();
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("beforeunload", flush);
   };

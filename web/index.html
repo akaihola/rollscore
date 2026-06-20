@@ -31,6 +31,22 @@
     display: flex; gap: .75rem; align-items: center; z-index: 900;
     font: 14px/1.2 system-ui, sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.4);
   }
+  /* Dev tuning panel: a fixed column of sliders, toggled with `t`. */
+  .tuning-panel {
+    position: fixed; top: 0; right: 0; max-height: 100vh; overflow-y: auto;
+    background: rgba(20,20,20,.92); color: #fff; padding: .6rem .8rem;
+    z-index: 1100; font: 12px/1.3 system-ui, sans-serif;
+    box-shadow: -2px 0 12px rgba(0,0,0,.5);
+  }
+  .tuning-panel[hidden] { display: none; }
+  .tuning-title { font-weight: 600; margin-bottom: .5rem; opacity: .85; }
+  .tuning-row {
+    display: grid; grid-template-columns: 7.5rem 9rem 3rem; gap: .4rem;
+    align-items: center; margin-bottom: .25rem;
+  }
+  .tuning-row .tuning-key { white-space: nowrap; }
+  .tuning-row .tuning-value { text-align: right; font-variant-numeric: tabular-nums; }
+  .tuning-row input[type="range"] { width: 100%; }
 </style>
 </head>
 <body>

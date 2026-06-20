@@ -126,14 +126,34 @@ export function stepController(state, input) {
  * the caller should apply; thread the page's current scrollTop back in via
  * `view` each frame.
  */
-export function createGazeController(params) {
-  const smoother = createSmoother(params);
-  const velWindow = params.velocityWindow ?? 8;
+export function createGazeController(initialParams) {
+  let params = { ...initialParams };
+  let smoother = createSmoother(params);
+  let velWindow = params.velocityWindow ?? 8;
   const history = []; // {t, y: smoothedY}
   let ctrlState = {};
   let lastT = null;
 
   return {
+    /**
+     * Live-update the tuning parameters (the dev tuning panel calls this). Most
+     * params are read fresh each frame, so they take effect immediately; changing
+     * the smoother's `medianWindow`/`alpha` rebuilds it (its window is fixed at
+     * creation), and `velocityWindow` re-reads next frame.
+     */
+    setParams(partial) {
+      const prev = params;
+      params = { ...params, ...partial };
+      if (
+        partial.medianWindow !== undefined &&
+          partial.medianWindow !== prev.medianWindow ||
+        partial.alpha !== undefined && partial.alpha !== prev.alpha
+      ) {
+        smoother = createSmoother(params);
+      }
+      velWindow = params.velocityWindow ?? 8;
+    },
+
     update(sample, view) {
       const dtMs = lastT === null ? 0 : sample.t - lastT;
       lastT = sample.t;

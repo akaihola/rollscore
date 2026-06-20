@@ -82,6 +82,37 @@ describe("createGazeController pipeline", () => {
     expect(series.at(-1)).toBe(series.at(-2));
   });
 
+  it("setParams updates live behaviour — a tighter step cap throttles scroll", () => {
+    const samples = [];
+    for (let i = 0; i < 40; i++) {
+      samples.push({ t: i * 33, x: 500, y: 300 + (400 * i) / 39, confidence: 0.9 });
+    }
+    const ctl = createGazeController({ ...PARAMS });
+    let scrollTop = 0;
+    // First 20 frames at the default step cap, then clamp it down to 1px/frame.
+    for (let i = 0; i < 20; i++) {
+      scrollTop = ctl.update(samples[i], { ...VIEW, scrollTop });
+    }
+    ctl.setParams({ maxStepPerFrame: 1 });
+    let prev = scrollTop;
+    for (let i = 20; i < 40; i++) {
+      scrollTop = ctl.update(samples[i], { ...VIEW, scrollTop });
+      expect(scrollTop - prev).toBeLessThanOrEqual(1 + 1e-9); // new cap honoured live
+      prev = scrollTop;
+    }
+  });
+
+  it("setParams rebuilds the smoother when medianWindow/alpha change", () => {
+    const ctl = createGazeController({ ...PARAMS });
+    // Should not throw and should keep producing valid scroll output afterwards.
+    ctl.setParams({ medianWindow: 1, alpha: 1 });
+    const out = ctl.update(
+      { t: 0, x: 500, y: 500, confidence: 0.9 },
+      { ...VIEW, scrollTop: 0 }
+    );
+    expect(Number.isFinite(out)).toBe(true);
+  });
+
   it("upholds the safety invariant across random traces (property test)", () => {
     for (let seed = 1; seed <= 30; seed++) {
       const rnd = prng(seed);

@@ -14,6 +14,7 @@ function spies() {
     toggleAnnotations: vi.fn(),
     startCalibration: vi.fn(),
     captureCalibration: vi.fn(),
+    toggleTuning: vi.fn(),
   };
 }
 
@@ -80,6 +81,11 @@ describe("bindControls — keyboard", () => {
   it("g captures a calibration point at the cursor", () => {
     keydown("g");
     expect(handlers.captureCalibration).toHaveBeenCalledTimes(1);
+  });
+
+  it("t toggles the tuning panel", () => {
+    keydown("t");
+    expect(handlers.toggleTuning).toHaveBeenCalledTimes(1);
   });
 
   it("an unhandled key fires nothing", () => {
