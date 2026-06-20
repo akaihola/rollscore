@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { createSmoother, isReading } from "../js/gaze/control.js";
+import {
+  createSmoother,
+  isReading,
+  estimateReadingVelocity,
+} from "../js/gaze/control.js";
 
 describe("smoother", () => {
   it("rejects a single-frame spike via median window", () => {
@@ -36,5 +40,37 @@ describe("isReading (on-music gate)", () => {
 
   it("is false when x is right of the music column", () => {
     expect(isReading({ x: 950, confidence: 0.9 }, params)).toBe(false);
+  });
+});
+
+describe("estimateReadingVelocity", () => {
+  it("recovers the slope of a steadily descending read", () => {
+    // y climbs 50 px every 100 ms → 0.5 px/ms
+    const samples = [0, 100, 200, 300, 400].map((t) => ({ t, y: 300 + 0.5 * t }));
+    const v = estimateReadingVelocity(samples, { maxVelocity: 10 });
+    expect(v).toBeCloseTo(0.5, 3);
+  });
+
+  it("clamps a runaway slope to maxVelocity", () => {
+    const samples = [0, 100, 200, 300].map((t) => ({ t, y: 0.5 * t }));
+    const v = estimateReadingVelocity(samples, { maxVelocity: 0.2 });
+    expect(v).toBe(0.2);
+  });
+
+  it("never returns a negative velocity (gaze moving up)", () => {
+    const samples = [0, 100, 200, 300].map((t) => ({ t, y: 500 - 0.4 * t }));
+    expect(estimateReadingVelocity(samples, { maxVelocity: 10 })).toBe(0);
+  });
+
+  it("is ~0 for a noisy flat trace", () => {
+    const noise = [2, -3, 1, -1, 2, -2, 0];
+    const samples = noise.map((n, i) => ({ t: i * 100, y: 400 + n }));
+    const v = estimateReadingVelocity(samples, { maxVelocity: 10 });
+    expect(Math.abs(v)).toBeLessThan(0.05);
+  });
+
+  it("returns 0 with fewer than two samples", () => {
+    expect(estimateReadingVelocity([{ t: 0, y: 5 }], { maxVelocity: 10 })).toBe(0);
+    expect(estimateReadingVelocity([], { maxVelocity: 10 })).toBe(0);
   });
 });

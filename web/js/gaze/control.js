@@ -41,3 +41,32 @@ export function createSmoother({ medianWindow, alpha }) {
 export function isReading({ x, confidence }, { columnX0, columnX1, minConfidence }) {
   return confidence >= minConfidence && x >= columnX0 && x <= columnX1;
 }
+
+/**
+ * Reading speed: least-squares slope of `y` vs `t` over a short sample history,
+ * clamped to `[0, maxVelocity]`. The lower clamp enforces forward-only reading
+ * (an upward gaze drift never produces negative velocity); the upper clamp keeps
+ * a bad fit from driving a runaway scroll. Returns 0 for fewer than 2 samples.
+ */
+export function estimateReadingVelocity(samples, { maxVelocity }) {
+  const n = samples.length;
+  if (n < 2) return 0;
+
+  let sumT = 0, sumY = 0;
+  for (const { t, y } of samples) {
+    sumT += t;
+    sumY += y;
+  }
+  const meanT = sumT / n, meanY = sumY / n;
+
+  let num = 0, den = 0;
+  for (const { t, y } of samples) {
+    const dt = t - meanT;
+    num += dt * (y - meanY);
+    den += dt * dt;
+  }
+  if (den === 0) return 0;
+
+  const slope = num / den;
+  return Math.max(0, Math.min(maxVelocity, slope));
+}
