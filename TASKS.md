@@ -46,11 +46,16 @@ the checkboxes below as phases complete (keep them in sync with the branch).
 - [x] **Phase 6 — FastAPI routes** (`/api/library`, lazy page-image + page-dims, resume + tuning; 503 without a source)
 - [x] **Phase 7 — Front-end: API client + chooser view**
 - [x] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
-- [ ] **Phase 9 — Gaze control pure functions** (unit-tested core)
+- [ ] **Phase 9 — Gaze control pure functions** (unit-tested core) ← current
 - [ ] **Phase 10 — GazeSource abstraction + WebGazer + calibration**
 - [ ] **Phase 11 — Wire gaze loop + controls into the reader**
 - [ ] **Phase 12 — Dev tuning panel**
 - [ ] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
+  - Known issue to fix here: `crop.py` v1 overshoots the canvas when manifest
+    `zoom > 1` (page maps wider than 2160px → side margins clipped, e.g. the
+    composer name on Moments Musicaux No.1 p1). The faithful fix honours the
+    per-page manifest `rect` (currently ignored). The front-end strip scaling is
+    correct; this is purely the render crop.
 
 ### Running it locally
 
