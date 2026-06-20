@@ -3,7 +3,8 @@
 *.4sc
 *.4ss
 
-# Extraction output
+# Extraction output (dir in main repo; may be a symlink in a worktree)
+/out
 /out/
 /extracted/
 
