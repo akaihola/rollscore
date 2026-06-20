@@ -30,3 +30,14 @@ export function createSmoother({ medianWindow, alpha }) {
     },
   };
 }
+
+/**
+ * On-music gate: is the reader actually looking at the score right now?
+ *
+ * True only for a confident sample whose `x` falls inside the music column
+ * `[columnX0, columnX1]`. Filters out low-confidence frames and glances toward
+ * the hands/keyboard outside the column.
+ */
+export function isReading({ x, confidence }, { columnX0, columnX1, minConfidence }) {
+  return confidence >= minConfidence && x >= columnX0 && x <= columnX1;
+}
