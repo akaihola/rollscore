@@ -117,3 +117,10 @@ export function buildStrip({ file, pageDims, stripWidth, annotated = false }) {
   strip.style.height = `${heights.reduce((a, b) => a + b, 0)}px`;
   return strip;
 }
+
+/** Re-point every page image at the annotated or un-annotated render. */
+export function setAnnotation(strip, file, annotated) {
+  for (const img of strip.querySelectorAll("img.page")) {
+    img.src = pageUrl(file, Number(img.dataset.page), annotated);
+  }
+}

@@ -5,6 +5,8 @@ import {
   computeResumeScroll,
   scrollToResume,
   throttle,
+  pageToScroll,
+  setAnnotation,
 } from "../js/reader.js";
 import { pageUrl } from "../js/api.js";
 
@@ -109,6 +111,55 @@ describe("scrollToResume", () => {
 
   it("clamps a negative scrollTop to the top of page 1", () => {
     expect(scrollToResume(dims, stripWidth, -50)).toEqual({ page: 1, scroll: 0 });
+  });
+});
+
+describe("pageToScroll (piece jump)", () => {
+  const dims = [
+    { width: 2160, height: 2824 }, // 1412 px tall at width 1080
+    { width: 2160, height: 2824 },
+    { width: 2160, height: 2824 },
+  ];
+  const stripWidth = 1080;
+
+  it("returns 0 for page 1", () => {
+    expect(pageToScroll(dims, stripWidth, 1)).toBe(0);
+  });
+
+  it("returns the cumulative height above a later page", () => {
+    expect(pageToScroll(dims, stripWidth, 3)).toBeCloseTo(1412 * 2, 6);
+  });
+});
+
+describe("setAnnotation", () => {
+  const file = "Études, Op. 10.pdf";
+  const stripWidth = 1080;
+  const dims = [
+    { width: 2160, height: 2824 },
+    { width: 2160, height: 2824 },
+  ];
+
+  it("swaps every page image between annotated and un-annotated URLs", () => {
+    const strip = buildStrip({ file, pageDims: dims, stripWidth });
+    let imgs = [...strip.querySelectorAll("img")];
+    expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+      pageUrl(file, 1, false),
+      pageUrl(file, 2, false),
+    ]);
+
+    setAnnotation(strip, file, true);
+    imgs = [...strip.querySelectorAll("img")];
+    expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+      pageUrl(file, 1, true),
+      pageUrl(file, 2, true),
+    ]);
+
+    setAnnotation(strip, file, false);
+    imgs = [...strip.querySelectorAll("img")];
+    expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+      pageUrl(file, 1, false),
+      pageUrl(file, 2, false),
+    ]);
   });
 });
 
