@@ -20,6 +20,19 @@ def test_tuning_defaults_and_override(tmp_path):
     assert store.get_tuning()["deadzone"] > 0  # untouched default preserved
 
 
+def test_tuning_defaults_cover_every_controller_param(tmp_path):
+    # The front-end controller (control.js stepController) needs the full param
+    # set every frame; a missing key (e.g. maxStepPerFrame) silently NaNs the
+    # scroll target. Defaults must therefore be complete for the live wiring.
+    store = StateStore(tmp_path / "state.json")
+    t = store.get_tuning()
+    required = {
+        "setpoint", "deadzone", "maxStepPerFrame", "coastMs", "maxVelocity",
+        "medianWindow", "alpha", "columnX0", "columnX1", "minConfidence",
+    }
+    assert required <= set(t), f"missing tuning defaults: {required - set(t)}"
+
+
 def test_calibration_roundtrip(tmp_path):
     store = StateStore(tmp_path / "state.json")
     assert store.get_calibration() is None

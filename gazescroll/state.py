@@ -24,6 +24,7 @@ from typing import Any
 TUNING_DEFAULTS: dict[str, float] = {
     "setpoint": 0.4,        # read-position target as fraction of viewport height
     "deadzone": 10.0,       # px error band around the setpoint (no scroll)
+    "maxStepPerFrame": 8.0, # px hard cap on a single frame's scroll step
     "coastMs": 800.0,       # coast duration after gaze is lost, before freeze
     "maxVelocity": 480.0,   # px/s clamp on the reading-velocity estimate
     "medianWindow": 5.0,    # samples in the smoothing median window

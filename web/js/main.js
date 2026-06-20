@@ -62,15 +62,18 @@ function fakeGazeMode() {
 
 /**
  * A scripted {@link GazeSource} for `?fakegaze` mode: emits, on a timer, a steady
- * "reading" trace — gaze parked just below the setpoint inside the music column,
- * with a gentle vertical wander — so the controller scrolls forward without a
- * camera. Deterministic in shape (the unit tests use `ScriptedGazeSource`; this
- * is its real-time sibling for manual demos).
+ * *descending* reading trace — gaze inside the music column, y ramping downward
+ * at a comfortable reading pace — so the velocity estimator sees positive motion
+ * and the controller scrolls forward without a camera. (A static gaze produces
+ * zero reading velocity and so, by design, no scroll; the trace must move.) The
+ * y ramp wraps within the column so it stays on-screen; the single wrap frame is
+ * absorbed by the controller's forward-only clamp. Deterministic in shape — the
+ * unit tests use `ScriptedGazeSource`; this is its real-time sibling for demos.
  */
 function createFakeGaze(scroller) {
   let cb = null;
   let timer = null;
-  let i = 0;
+  let yFrac = 0.4; // column-relative read position, wraps 0.4 → 0.75
   return {
     onSample(fn) {
       cb = fn;
@@ -78,11 +81,12 @@ function createFakeGaze(scroller) {
     start() {
       timer = setInterval(() => {
         const r = scroller.getBoundingClientRect();
-        i += 1;
+        yFrac += 0.012; // ~reading pace at 33 ms/frame
+        if (yFrac > 0.75) yFrac = 0.4;
         cb?.({
           t: performance.now(),
           x: r.left + r.width * 0.5,
-          y: r.top + r.height * (0.55 + 0.03 * Math.sin(i / 6)),
+          y: r.top + r.height * yFrac,
           confidence: 1,
         });
       }, 33);
