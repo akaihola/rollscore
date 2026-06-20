@@ -7,6 +7,7 @@ import {
   throttle,
   pageToScroll,
   setAnnotation,
+  onScoreEnd,
 } from "../js/reader.js";
 import { pageUrl } from "../js/api.js";
 
@@ -187,5 +188,40 @@ describe("throttle", () => {
     throttled.flush();
     expect(fn).toHaveBeenCalledTimes(2);
     expect(fn).toHaveBeenLastCalledWith("y");
+  });
+});
+
+describe("onScoreEnd — setlist context", () => {
+  const setlist = () => ({
+    items: [
+      { title: "Prelude", file: "a.pdf" },
+      { title: "Fugue", file: "b.pdf" },
+      { title: "Coda", file: "c.pdf" },
+    ],
+    index: 0,
+  });
+
+  it("never auto-advances when a setlist piece ends", () => {
+    const out = onScoreEnd({ setlist: setlist() });
+    expect(out.advance).toBe(false);
+  });
+
+  it("surfaces the next piece as a waiting affordance", () => {
+    const out = onScoreEnd({ setlist: { ...setlist(), index: 0 } });
+    expect(out.next).toEqual({ title: "Fugue", file: "b.pdf" });
+    expect(out.message).toContain("Fugue");
+  });
+
+  it("offers nothing past the last piece of a setlist", () => {
+    const out = onScoreEnd({ setlist: { ...setlist(), index: 2 } });
+    expect(out.advance).toBe(false);
+    expect(out.next).toBeNull();
+  });
+
+  it("does nothing outside a setlist context", () => {
+    const out = onScoreEnd({ setlist: null });
+    expect(out.advance).toBe(false);
+    expect(out.next).toBeNull();
+    expect(out.message).toBeNull();
   });
 });

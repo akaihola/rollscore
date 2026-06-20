@@ -120,6 +120,27 @@ export function buildStrip({ file, pageDims, annotated = false }) {
   return strip;
 }
 
+/**
+ * Decide what happens when a score reaches its end.
+ *
+ * A setlist is a deliberate performance order, so we **never auto-advance** —
+ * jumping to the next piece mid-page-turn during a concert would be a disaster.
+ * Instead, when more pieces remain we surface the next one as a waiting
+ * affordance; the player advances with an explicit next-piece control. Past the
+ * last piece (or with no setlist at all) there is nothing to offer.
+ *
+ * `context.setlist` is `{ items: [{title, file}, …], index }` or null/undefined.
+ * Returns `{ advance: false, next, message }` — `advance` is always false.
+ */
+export function onScoreEnd({ setlist } = {}) {
+  const next = setlist?.items?.[setlist.index + 1] ?? null;
+  return {
+    advance: false,
+    next,
+    message: next ? `Setlist: next is ${next.title}` : null,
+  };
+}
+
 /** Re-point every page image at the annotated or un-annotated render. */
 export function setAnnotation(strip, file, annotated) {
   for (const img of strip.querySelectorAll("img.page")) {
