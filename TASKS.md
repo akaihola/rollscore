@@ -46,7 +46,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
 - [x] **Phase 6 — FastAPI routes** (`/api/library`, lazy page-image + page-dims, resume + tuning; 503 without a source)
 - [x] **Phase 7 — Front-end: API client + chooser view**
 - [x] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
-- [ ] **Phase 9 — Gaze control pure functions** (unit-tested core) ← current
+- [x] **Phase 9 — Gaze control pure functions** (unit-tested core)
 - [ ] **Phase 10 — GazeSource abstraction + WebGazer + calibration**
 - [ ] **Phase 11 — Wire gaze loop + controls into the reader**
 - [ ] **Phase 12 — Dev tuning panel**
