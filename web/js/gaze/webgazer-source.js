@@ -49,7 +49,15 @@ export class WebGazerGazeSource {
       if (!data || !this._cb) return;
       this._cb({ x: data.x, y: data.y, confidence: this._confidence, t });
     });
-    return wg.begin();
+    return wg.begin().then(() => {
+      // WebGazer treats every mouse move/click as ground truth and retrains the
+      // regression on the cursor. That makes an *idle* gaze snap back to the last
+      // cursor/click position instead of following the eyes. Drop the listeners
+      // so prediction is camera-only; calibration trains explicitly via
+      // `recordScreenPosition` (see calibration.js).
+      wg.removeMouseEventListeners();
+      return wg;
+    });
   }
 
   /** End tracking and clear the listener. */

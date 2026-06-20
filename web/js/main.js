@@ -251,6 +251,10 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
       latestSample = s;
     });
     await source.start();
+    // WebGazer's camera preview is fixed at the top-left and would cover the
+    // toolbar buttons; drop it just below the toolbar.
+    const videoBox = document.getElementById("webgazerVideoContainer");
+    if (videoBox) videoBox.style.top = `${bar.getBoundingClientRect().height}px`;
   } catch (err) {
     status.textContent = `Gaze unavailable: ${err.message}`;
     source = null;
@@ -275,7 +279,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   async function startCalibration() {
     setPaused(true);
     status.textContent = "Calibrating — click each dot";
-    const blob = await runCalibration({ document });
+    const blob = await runCalibration({ document, webgazer: window.webgazer });
     if (blob) putCalibration(blob).catch(() => {});
     status.textContent = "Calibrated";
   }

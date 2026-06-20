@@ -67,13 +67,24 @@ export function restoreCalibration(blob, storage = globalThis.localStorage) {
  * `clicksPerPoint` times; WebGazer records each click as a training sample.
  * Resolves with the serialized calibration blob once every dot is done.
  *
+ * Each click is fed to the regression *explicitly* via `recordScreenPosition`
+ * rather than relying on WebGazer's global click listener: the live reader
+ * removes the mouse listeners (so an idle gaze isn't continuously retrained to
+ * the cursor / last click), which would otherwise also silence calibration.
+ *
  * @param {Object} opts
  * @param {Document} opts.document
- * @param {number}  [opts.clicksPerPoint] - clicks needed per dot (default 3)
- * @param {() => void} [opts.onProgress]   - called after each registered click
+ * @param {any}     [opts.webgazer]        - WebGazer instance (defaults to global)
+ * @param {number}  [opts.clicksPerPoint]  - clicks needed per dot (default 3)
+ * @param {() => void} [opts.onProgress]    - called after each registered click
  * @returns {Promise<any>} the calibration blob (also passed to `persist` if given)
  */
-export function runCalibration({ document, clicksPerPoint = 3, onProgress } = {}) {
+export function runCalibration({
+  document,
+  webgazer = globalThis.webgazer,
+  clicksPerPoint = 3,
+  onProgress,
+} = {}) {
   const xs = [0.1, 0.5, 0.9];
   const ys = [0.1, 0.5, 0.9];
 
@@ -91,8 +102,10 @@ export function runCalibration({ document, clicksPerPoint = 3, onProgress } = {}
         dot.style.top = `${fy * 100}vh`;
         let clicks = 0;
         dot.textContent = String(clicksPerPoint);
-        dot.addEventListener("click", () => {
-          clicks += 1; // WebGazer auto-records the click location as training data
+        dot.addEventListener("click", (e) => {
+          // Explicitly train the regression at the click location.
+          webgazer?.recordScreenPosition?.(e.clientX, e.clientY, "click");
+          clicks += 1;
           dot.textContent = String(Math.max(0, clicksPerPoint - clicks));
           if (onProgress) onProgress();
           if (clicks >= clicksPerPoint) {
