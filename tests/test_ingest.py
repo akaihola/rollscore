@@ -22,3 +22,20 @@ def test_resolve_prebuilt_out_dir(tmp_path: Path):
 def test_resolve_rejects_unknown(tmp_path: Path):
     with pytest.raises(ValueError):
         resolve_source(tmp_path / "nope.txt")
+
+
+def test_extract_4sb_then_reuse(tmp_path: Path, sample_archive: bytes, monkeypatch):
+    archive = tmp_path / "Archive test.4sb"
+    archive.write_bytes(sample_archive)
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("GAZESCROLL_CACHE", str(cache))
+
+    root = resolve_source(archive)
+    assert root.manifest_path.exists()
+    assert (root.pdfs_dir / "Song.pdf").exists()
+
+    # Second call must not re-extract (same archive mtime): reuse marker stable.
+    token1 = root.mtime_token
+    root2 = resolve_source(archive)
+    assert root2.path == root.path
+    assert root2.mtime_token == token1
