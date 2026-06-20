@@ -47,7 +47,11 @@ the checkboxes below as phases complete (keep them in sync with the branch).
 - [x] **Phase 7 — Front-end: API client + chooser view**
 - [x] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
 - [x] **Phase 9 — Gaze control pure functions** (unit-tested core)
-- [ ] **Phase 10 — GazeSource abstraction + WebGazer + calibration**
+- [x] **Phase 10 — GazeSource abstraction + WebGazer + calibration**
+  - [x] 10.1 `GazeSource` interface + `ScriptedGazeSource` fake (unit-tested)
+  - [x] 10.2 `WebGazerGazeSource` thin adapter (manual smoke)
+  - [x] 10.3 Calibration overlay + recenter offset (pure math unit-tested) +
+    `GET/PUT /api/calibration`
 - [ ] **Phase 11 — Wire gaze loop + controls into the reader**
 - [ ] **Phase 12 — Dev tuning panel**
 - [ ] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
