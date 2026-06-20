@@ -44,7 +44,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] 4.5 Page-dimensions metadata helper
 - [x] **Phase 5 — State store** (JSON: resume/tuning/calibration, atomic write)
 - [x] **Phase 6 — FastAPI routes** (`/api/library`, lazy page-image + page-dims, resume + tuning; 503 without a source)
-- [ ] **Phase 7 — Front-end: API client + chooser view**
+- [x] **Phase 7 — Front-end: API client + chooser view**
 - [ ] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
 - [ ] **Phase 9 — Gaze control pure functions** (unit-tested core)
 - [ ] **Phase 10 — GazeSource abstraction + WebGazer + calibration**
