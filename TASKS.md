@@ -42,7 +42,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] 4.3 Alpha-composite aux overlay 1:1 top-left
   - [x] 4.4 Cache composited PNGs by mtime + annotation flag (1-based→0-based)
   - [x] 4.5 Page-dimensions metadata helper
-- [ ] **Phase 5 — State store** (JSON)
+- [x] **Phase 5 — State store** (JSON: resume/tuning/calibration, atomic write)
 - [ ] **Phase 6 — FastAPI routes**
 - [ ] **Phase 7 — Front-end: API client + chooser view**
 - [ ] **Phase 8 — Front-end: reader view** (scroll strip + lazy load + resume)
