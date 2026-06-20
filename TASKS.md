@@ -36,7 +36,12 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] 3.3 Bookmarks → piece ranges
   - [x] 3.4 Setlists (ordered, resolved to scores)
   - [x] 3.5 Real-library smoke (skips without `out/`)
-- [ ] **Phase 4 — Render service** (crop + overlay composite + cache)
+- [x] **Phase 4 — Render service** (crop + overlay composite + cache)
+  - [x] 4.1 Canvas constants + page→canvas matrix (empirical v1)
+  - [x] 4.2 Render cropped page to RGBA canvas
+  - [x] 4.3 Alpha-composite aux overlay 1:1 top-left
+  - [x] 4.4 Cache composited PNGs by mtime + annotation flag (1-based→0-based)
+  - [x] 4.5 Page-dimensions metadata helper
 - [ ] **Phase 5 — State store** (JSON)
 - [ ] **Phase 6 — FastAPI routes**
 - [ ] **Phase 7 — Front-end: API client + chooser view**
