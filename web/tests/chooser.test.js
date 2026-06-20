@@ -70,21 +70,57 @@ describe("buildChooser", () => {
     expect(pieces.map((p) => p.textContent)).toEqual(["No. 1", "No. 2"]);
   });
 
-  it("fires onOpen with {file, page} when a piece is clicked", () => {
+  it("fires onOpen with file, page, the score's pieces and no setlist when a piece is clicked", () => {
     const onOpen = vi.fn();
     const node = buildChooser(model(), { onOpen });
     const piece = node.querySelector(
       '.composers .piece[data-file="Études, Op. 10.pdf"][data-page="4"]'
     );
     piece.click();
-    expect(onOpen).toHaveBeenCalledWith({ file: "Études, Op. 10.pdf", page: 4 });
+    expect(onOpen).toHaveBeenCalledWith({
+      file: "Études, Op. 10.pdf",
+      page: 4,
+      pieces: [
+        { title: "No. 1", first_page: 1, last_page: 3 },
+        { title: "No. 2", first_page: 4, last_page: 6 },
+      ],
+      setlist: null,
+    });
   });
 
-  it("fires onOpen at page 1 when a score title is clicked", () => {
+  it("fires onOpen at page 1 with empty pieces when a score title is clicked", () => {
     const onOpen = vi.fn();
     const node = buildChooser(model(), { onOpen });
     const score = node.querySelector('.composers .score[data-file="Sonata.pdf"]');
     score.click();
-    expect(onOpen).toHaveBeenCalledWith({ file: "Sonata.pdf", page: 1 });
+    expect(onOpen).toHaveBeenCalledWith({
+      file: "Sonata.pdf",
+      page: 1,
+      pieces: [],
+      setlist: null,
+    });
+  });
+
+  it("passes setlist context (items + index) when opened from a setlist", () => {
+    const onOpen = vi.fn();
+    const node = buildChooser(model(), { onOpen });
+    // The "Recital" setlist is [Études, Sonata]; click Sonata (index 1).
+    const score = node.querySelector(
+      '.setlists details .score[data-file="Sonata.pdf"]'
+    );
+    score.click();
+    expect(onOpen).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: "Sonata.pdf",
+        page: 1,
+        setlist: {
+          items: [
+            { title: "Études, Op. 10", file: "Études, Op. 10.pdf" },
+            { title: "Sonata", file: "Sonata.pdf" },
+          ],
+          index: 1,
+        },
+      })
+    );
   });
 });

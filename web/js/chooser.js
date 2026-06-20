@@ -6,8 +6,11 @@
  * where Score = {filename, title, composer, page_count, pieces:[{title,
  * first_page, last_page}]}.
  *
- * `buildChooser(model, {onOpen})` returns a detached element; `onOpen` is
- * called with `{file, page}` when a score or one of its pieces is chosen.
+ * `buildChooser(model, {onOpen})` returns a detached element; `onOpen` is called
+ * with `{file, page, pieces, setlist}` when a score or one of its pieces is
+ * chosen. `pieces` is the score's piece list (for in-reader piece navigation);
+ * `setlist` is `{items: [{title, file}, …], index}` when the score was opened
+ * from a setlist (so the reader can stop-and-wait at its end) or `null`.
  * No global state — the caller mounts the returned node.
  */
 
@@ -18,24 +21,32 @@ function el(tag, className, text) {
   return node;
 }
 
-/** Build a clickable score entry, with its pieces listed when multi-piece. */
-function scoreEntry(score, onOpen) {
+/**
+ * Build a clickable score entry, with its pieces listed when multi-piece.
+ *
+ * `setlist` (when the entry lives in a setlist) is forwarded verbatim in every
+ * `onOpen` payload so the reader knows its place in the running order.
+ */
+function scoreEntry(score, onOpen, setlist = null) {
   const wrap = el("div", "score-wrap");
+  const pieces = score.pieces ?? [];
 
   const title = el("button", "score", score.title);
   title.dataset.file = score.filename;
-  title.addEventListener("click", () => onOpen({ file: score.filename, page: 1 }));
+  title.addEventListener("click", () =>
+    onOpen({ file: score.filename, page: 1, pieces, setlist })
+  );
   wrap.append(title);
 
-  if (score.pieces && score.pieces.length) {
+  if (pieces.length) {
     const list = el("ul", "pieces");
-    for (const piece of score.pieces) {
+    for (const piece of pieces) {
       const item = el("li");
       const btn = el("button", "piece", piece.title);
       btn.dataset.file = score.filename;
       btn.dataset.page = String(piece.first_page);
       btn.addEventListener("click", () =>
-        onOpen({ file: score.filename, page: piece.first_page })
+        onOpen({ file: score.filename, page: piece.first_page, pieces, setlist })
       );
       item.append(btn);
       list.append(item);
@@ -54,7 +65,10 @@ export function buildChooser(model, { onOpen }) {
   for (const [name, scores] of Object.entries(model.setlists)) {
     const details = el("details");
     details.append(el("summary", null, name));
-    for (const score of scores) details.append(scoreEntry(score, onOpen));
+    const items = scores.map((s) => ({ title: s.title, file: s.filename }));
+    scores.forEach((score, index) =>
+      details.append(scoreEntry(score, onOpen, { items, index }))
+    );
     setlists.append(details);
   }
   root.append(setlists);

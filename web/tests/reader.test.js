@@ -8,6 +8,7 @@ import {
   pageToScroll,
   setAnnotation,
   onScoreEnd,
+  pieceJumpPage,
 } from "../js/reader.js";
 import { pageUrl } from "../js/api.js";
 
@@ -223,5 +224,33 @@ describe("onScoreEnd — setlist context", () => {
     expect(out.advance).toBe(false);
     expect(out.next).toBeNull();
     expect(out.message).toBeNull();
+  });
+});
+
+describe("pieceJumpPage", () => {
+  const pieces = () => [
+    { first_page: 1, last_page: 3 },
+    { first_page: 4, last_page: 6 },
+    { first_page: 7, last_page: 9 },
+  ];
+
+  it("jumps forward to the next piece's first page", () => {
+    expect(pieceJumpPage(pieces(), 5, 1)).toBe(7);
+  });
+
+  it("jumps back to the previous piece's first page", () => {
+    expect(pieceJumpPage(pieces(), 5, -1)).toBe(1);
+  });
+
+  it("returns null past the last piece", () => {
+    expect(pieceJumpPage(pieces(), 8, 1)).toBeNull();
+  });
+
+  it("returns null before the first piece", () => {
+    expect(pieceJumpPage(pieces(), 1, -1)).toBeNull();
+  });
+
+  it("returns null when there are no pieces", () => {
+    expect(pieceJumpPage([], 1, 1)).toBeNull();
   });
 });

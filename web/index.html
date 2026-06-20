@@ -15,6 +15,22 @@
   /* Pages scale to the strip width (responsive width set inline); never clipped. */
   .page { display: block; }
   .error { color: #b00; padding: 1rem; }
+  .toolbar .status { margin-left: auto; align-self: center; font: 13px/1 system-ui, sans-serif; opacity: .85; }
+  /* Calibration: nine fixed dots the user clicks to train the regression. */
+  .cal-dot {
+    position: fixed; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #e33; color: #fff; display: flex; align-items: center; justify-content: center;
+    font: 13px/1 system-ui, sans-serif; cursor: pointer; z-index: 1000; user-select: none;
+  }
+  .cal-dot.done { background: #2a2; }
+  /* Setlist "next is …" affordance shown when a setlist piece scrolls to its end. */
+  .setlist-next {
+    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+    background: #222; color: #fff; padding: .6rem 1rem; border-radius: 6px;
+    display: flex; gap: .75rem; align-items: center; z-index: 900;
+    font: 14px/1.2 system-ui, sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
 </style>
 </head>
 <body>

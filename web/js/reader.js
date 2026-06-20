@@ -141,6 +141,23 @@ export function onScoreEnd({ setlist } = {}) {
   };
 }
 
+/**
+ * First page of the piece `dir` steps from the one containing `currentPage`.
+ *
+ * `dir` is +1 (next piece) or -1 (previous). The "current" piece is the last one
+ * starting at or before `currentPage`, so a page in a gap still resolves to the
+ * piece you are reading past. Returns the target piece's `first_page`, or null
+ * when there is no such piece (past the last / before the first / no pieces).
+ */
+export function pieceJumpPage(pieces, currentPage, dir) {
+  let current = -1;
+  for (let i = 0; i < pieces.length; i++) {
+    if (pieces[i].first_page <= currentPage) current = i;
+  }
+  const target = pieces[current + dir];
+  return target ? target.first_page : null;
+}
+
 /** Re-point every page image at the annotated or un-annotated render. */
 export function setAnnotation(strip, file, annotated) {
   for (const img of strip.querySelectorAll("img.page")) {
