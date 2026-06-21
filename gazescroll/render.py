@@ -1,9 +1,11 @@
-"""Render a PDF page into forScore's standardized canvas and composite overlays.
+"""Render a PDF page to a full-page canvas and composite overlays.
 
-Each page is rendered through its empirical per-page crop (`gazescroll.crop`)
-onto a white CANVAS_PX RGBA canvas, top-left anchored. The aux overlay (when
-present) is alpha-composited 1:1. Composited PNGs are cached on disk keyed by
-the archive mtime, score, page, and annotation flag.
+Each page is fit to the canvas width (`gazescroll.crop`) onto a white per-page
+RGBA canvas, top-left anchored — the whole page, never a zoom-cropped slice. The
+aux overlay (authored in forScore's cropped/zoomed space) is resampled into that
+full-page space (`transform_overlay`) so annotations stay registered, then
+alpha-composited. Composited PNGs are cached on disk keyed by the archive mtime,
+score, page, and annotation flag.
 """
 from __future__ import annotations
 
@@ -15,30 +17,67 @@ from pathlib import Path
 import pymupdf
 from PIL import Image
 
-from gazescroll.crop import CANVAS_PX, page_to_canvas_matrix
+from gazescroll.crop import CANVAS_PT, canvas_size, overlay_affine, page_to_canvas_matrix
 from gazescroll.ingest import ExtractionRoot, _cache_dir
 
 
-def render_page_image(
-    pdf_path: Path, page_index: int, page_params: dict
-) -> Image.Image:
-    """Render a single PDF page (0-based) onto a white CANVAS_PX RGBA canvas."""
+def render_page_image(pdf_path: Path, page_index: int) -> Image.Image:
+    """Render a single PDF page (0-based) onto a white full-page RGBA canvas.
+
+    The page is fit to the canvas width and pasted top-left; the canvas height
+    follows the page aspect, so the whole page is rendered with no zoom crop.
+    """
     with pymupdf.open(pdf_path) as doc:
         page = doc[page_index]
-        matrix = page_to_canvas_matrix(page_params, page.rect)
+        matrix = page_to_canvas_matrix(page.rect)
+        size = canvas_size(page.rect)
         pix = page.get_pixmap(matrix=matrix, alpha=True)
         rendered = Image.frombytes("RGBA", (pix.width, pix.height), pix.samples)
 
-    canvas = Image.new("RGBA", CANVAS_PX, (255, 255, 255, 255))
-    canvas.alpha_composite(rendered, (0, 0))  # top-left anchored
+    canvas = Image.new("RGBA", size, (255, 255, 255, 255))
+    _paste_clipped(canvas, rendered, 0, 0)
     return canvas
 
 
-def composite_overlay(base: Image.Image, overlay: Image.Image) -> Image.Image:
-    """Alpha-composite the aux `overlay` onto `base` 1:1, top-left anchored.
+def transform_overlay(
+    overlay: Image.Image, page_params: dict, size: tuple[int, int]
+) -> Image.Image:
+    """Resample a forScore aux overlay into the full-page render ``size``.
 
-    Overlays are authored at CANVAS_PX already; the resize is a no-op safety net
-    for any that arrive at a different size.
+    The overlay is authored in forScore's cropped/zoomed display space; the
+    affine from ``crop.overlay_affine`` un-zooms and shifts it so each annotation
+    lands on the same music in the full-page render.
+    """
+    return overlay.transform(
+        size,
+        Image.Transform.AFFINE,
+        overlay_affine(page_params),
+        resample=Image.Resampling.BILINEAR,
+    )
+
+
+def _paste_clipped(canvas: Image.Image, src: Image.Image, ox: int, oy: int) -> None:
+    """Alpha-composite ``src`` onto ``canvas`` at (ox, oy), clipping overflow.
+
+    Handles a negative origin (crop margin off the top/left) and a source larger
+    than the canvas (crop margin off the right/bottom).
+    """
+    cw, ch = canvas.size
+    sx0, sy0 = max(0, -ox), max(0, -oy)
+    dx0, dy0 = max(0, ox), max(0, oy)
+    w = min(src.width - sx0, cw - dx0)
+    h = min(src.height - sy0, ch - dy0)
+    if w <= 0 or h <= 0:
+        return
+    region = src.crop((sx0, sy0, sx0 + w, sy0 + h))
+    canvas.alpha_composite(region, (dx0, dy0))
+
+
+def composite_overlay(base: Image.Image, overlay: Image.Image) -> Image.Image:
+    """Alpha-composite the `overlay` onto `base` 1:1, top-left anchored.
+
+    The overlay should already match `base` (see `transform_overlay`); the resize
+    is a no-op safety net for any that arrive at a different size.
     """
     if overlay.size != base.size:
         overlay = overlay.resize(base.size)
@@ -92,13 +131,16 @@ def render_cached(
     page_params = doc.get("pages", {}).get(str(page), {})
     pdf_path = root.pdfs_dir / raw_name
 
-    image = render_page_image(pdf_path, page_index=page - 1, page_params=page_params)
+    image = render_page_image(pdf_path, page_index=page - 1)
 
     if annotated:
         overlay_path = root.aux_dir / f"{raw_name}|{page}.png"
         if overlay_path.exists():
             with Image.open(overlay_path) as overlay:
-                image = composite_overlay(image, overlay.convert("RGBA"))
+                mapped = transform_overlay(
+                    overlay.convert("RGBA"), page_params, image.size
+                )
+            image = composite_overlay(image, mapped)
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(cache_path)
@@ -108,14 +150,16 @@ def render_cached(
 def page_dimensions(root: ExtractionRoot, score_file: str) -> list[dict]:
     """Per-page rendered size — the layout contract the front-end reads.
 
-    Every page renders into the standardized canvas, so each entry is CANVAS_PX
-    for MVP; the list length is the score's page count.
+    Each page is fit to the canvas width, so the width is constant but the height
+    follows the page aspect (`crop.canvas_size`). The front-end reserves each
+    page's height from these before the image loads.
     """
     raw_name, doc = _resolve_doc(root, score_file)
     pdf_path = root.pdfs_dir / raw_name
     if pdf_path.exists():
         with pymupdf.open(pdf_path) as pdf:
-            count = pdf.page_count
+            sizes = [canvas_size(page.rect) for page in pdf]
     else:
-        count = len(doc.get("pages", {}))
-    return [{"width": CANVAS_PX[0], "height": CANVAS_PX[1]} for _ in range(count)]
+        # No PDF on disk (metadata-only): fall back to the standard canvas size.
+        sizes = [canvas_size(pymupdf.Rect(0, 0, *CANVAS_PT))] * len(doc.get("pages", {}))
+    return [{"width": w, "height": h} for w, h in sizes]

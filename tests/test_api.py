@@ -78,7 +78,7 @@ def test_page_image_endpoint(client):
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/png"
     img = Image.open(io.BytesIO(r.content))
-    assert img.size == CANVAS_PX
+    assert img.size == (2160, round(792 * 2160 / 612))  # full-page canvas
     # annotated overlay's red pixel composited in (opaque red over white)
     assert img.convert("RGBA").getpixel((10, 10)) == (255, 0, 0, 255)
 
@@ -94,7 +94,7 @@ def test_page_dimensions_endpoint(client):
     r = client.get(f"/api/score/{SCORE_FILE}/pages")
     assert r.status_code == 200
     dims = r.json()
-    assert dims == [{"width": CANVAS_PX[0], "height": CANVAS_PX[1]}]
+    assert dims == [{"width": 2160, "height": round(792 * 2160 / 612)}]
 
 
 # --- Task 6.3: resume + tuning ----------------------------------------------
