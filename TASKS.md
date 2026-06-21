@@ -65,12 +65,37 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   `createGazeController.setParams` retunes live; `t` toggles; throttled
   `PUT /api/tuning` persists. Headless Playwright smoke
   (`web/tools/tuning_smoke.py`) passed: 10 sliders, toggle, live PUT + GET.)
-- [ ] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
-  - Known issue to fix here: `crop.py` v1 overshoots the canvas when manifest
-    `zoom > 1` (page maps wider than 2160px → side margins clipped, e.g. the
-    composer name on Moments Musicaux No.1 p1). The faithful fix honours the
-    per-page manifest `rect` (currently ignored). The front-end strip scaling is
-    correct; this is purely the render crop.
+- [~] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
+  - [x] **Crop registration fixed.** The v1 misregistration was the *translation*,
+    not the scale: scale `fit × zoom` is correct (content scale == `zoom`, the
+    documented ground truth), but v1 dropped the dominant vertical shift. Correct
+    model (`crop.py`): translate by `-0.8 × trOffset × PX_PER_PT` in **both** axes,
+    and paste the pixmap at the transformed origin with clipping (`render.py` had
+    pasted at (0,0), discarding the translation). The `rect`-based crop hypothesis
+    in the old memory note was **wrong** (IoU 0.10 vs export); discarded. The side-
+    margin clipping at `zoom > 1` is **faithful** — forScore's own export clips
+    identically.
+  - [x] **13.1 Golden registration check** (`tests/test_render_golden.py`): renders
+    all 6 La Maja pages and asserts dark-pixel IoU > 0.55 vs forScore's
+    standardized-dimensions annotated export (measured 0.65–0.999). Opt-in: skips
+    without `out/` + the export PDF (`GAZESCROLL_LAMAJA_EXPORT`, copyrighted).
+  - [x] **Display sizing: full-page fit (render model v3, 2026-06-21).** The v2
+    render baked forScore's zoom-crop into the page, so the displayed page was a
+    magnified middle slice (zoom≈1.1–1.25 → ~15–25% too large, side margins
+    clipped) — reported as "way too large / doesn't fit the window width." v3 fits
+    the **whole page** width to the canvas: `page_to_canvas_matrix` is a plain
+    `fit`, `canvas_size`/`page_dimensions` are **per-page** (height follows the
+    page aspect). Annotations stay registered by un-zooming the aux overlay
+    (`crop.overlay_affine` + `render.transform_overlay`) instead of zoom-cropping
+    the page. Golden test now compares in forScore's export space (re-crop our
+    render back; IoU 0.68–0.96). Verified live via CDP (La Maja: full header +
+    right-margin "poco rall." now visible, two systems fit). Note: the render
+    cache key is unchanged, so clear `~/.cache/gazescroll/render` after this.
+  - [ ] **13.2 End-to-end manual acceptance** — needs the user's webcam + browser:
+    chooser → reader (verify crop+annotations land right *and* the strip fits the
+    window) → calibrate → play a piece while gaze keeps pace → exercise
+    pause/recenter/nudge/annotation-toggle/piece-jump → close/reopen (resume).
+    Then record good tuning defaults + write the MVP acceptance note.
 
 ### Running it locally
 
