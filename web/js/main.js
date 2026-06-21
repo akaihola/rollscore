@@ -157,7 +157,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
 
   let annotated = true;
   let cropMode = initialCropMode; // cropped by default; z key toggles
-  const strip = buildStrip({ file, extDims: extDims, annotated });
+  const strip = buildStrip({ file, pageDims: extDims, annotated });
   scroller.append(strip);
   applyCropMode(strip, extDims, cropMode);
 
