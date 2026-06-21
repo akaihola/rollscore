@@ -3,7 +3,8 @@
 *.4sc
 *.4ss
 
-# Extraction output
+# Extraction output (dir in main repo; may be a symlink in a worktree)
+/out
 /out/
 /extracted/
 
@@ -23,6 +24,12 @@
 
 # Git worktrees (isolated workspaces)
 /.worktrees/
+
+# Vendored front-end libs (large; re-fetch via web/vendor/README.md)
+/web/vendor/webgazer.js
+
+# Node / front-end tooling
+web/node_modules/
 
 # Python
 __pycache__/

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Gaze-scroll score reader</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  #app { height: 100%; }
+  /* Reader: a fixed toolbar above a single scrollable page strip. */
+  .reader { display: flex; flex-direction: column; height: 100%; }
+  .toolbar { display: flex; gap: .5rem; padding: .5rem; background: #222; color: #fff; }
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; background: #444; }
+  .strip { width: 100%; }
+  /* Pages scale to the strip width (responsive width set inline); never clipped. */
+  .page { display: block; }
+  .error { color: #b00; padding: 1rem; }
+  .toolbar .status { margin-left: auto; align-self: center; font: 13px/1 system-ui, sans-serif; opacity: .85; }
+  /* Calibration: nine fixed dots the user clicks to train the regression. */
+  .cal-dot {
+    position: fixed; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #e33; color: #fff; display: flex; align-items: center; justify-content: center;
+    font: 13px/1 system-ui, sans-serif; cursor: pointer; z-index: 1000; user-select: none;
+  }
+  .cal-dot.done { background: #2a2; }
+  /* Setlist "next is …" affordance shown when a setlist piece scrolls to its end. */
+  .setlist-next {
+    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+    background: #222; color: #fff; padding: .6rem 1rem; border-radius: 6px;
+    display: flex; gap: .75rem; align-items: center; z-index: 900;
+    font: 14px/1.2 system-ui, sans-serif; box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  /* Dev tuning panel: a fixed column of sliders, toggled with `t`. */
+  .tuning-panel {
+    position: fixed; top: 0; right: 0; max-height: 100vh; overflow-y: auto;
+    background: rgba(20,20,20,.92); color: #fff; padding: .6rem .8rem;
+    z-index: 1100; font: 12px/1.3 system-ui, sans-serif;
+    box-shadow: -2px 0 12px rgba(0,0,0,.5);
+  }
+  .tuning-panel[hidden] { display: none; }
+  .tuning-title { font-weight: 600; margin-bottom: .5rem; opacity: .85; }
+  .tuning-row {
+    display: grid; grid-template-columns: 7.5rem 9rem 3rem; gap: .4rem;
+    align-items: center; margin-bottom: .25rem;
+  }
+  .tuning-row .tuning-key { white-space: nowrap; }
+  .tuning-row .tuning-value { text-align: right; font-variant-numeric: tabular-nums; }
+  .tuning-row input[type="range"] { width: 100%; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/web/js/main.js"></script>
+</body>
+</html>

@@ -63,6 +63,29 @@ Output: `out/pdfs/` (original documents), `out/manifest.json` (restructured meta
 annotations), `out/stamps/*.png`, `out/setlists.json`. Auxiliary assets ForScore stores
 alongside scores (rendered page PNGs, `.4se` layer files) land in `out/aux/`.
 
+## Running the reader web app
+
+The `gazescroll` package is a local FastAPI server for reading scores (the
+gaze-scroll reader; see [docs/feature-coverage.md](docs/feature-coverage.md) and the
+MVP plan). Once dependencies are synced (`uv sync`), start it with the console script:
+
+```bash
+uv run gazescroll                 # http://127.0.0.1:8765/
+uv run gazescroll --port 9000     # custom port
+uv run gazescroll --reload        # auto-reload on code changes (development)
+```
+
+Host and port also read from `GAZESCROLL_HOST` / `GAZESCROLL_PORT`; explicit flags win.
+The extraction cache location is `GAZESCROLL_CACHE` (default `~/.cache/gazescroll`).
+
+> **Run it in your own shell, not via an agent.** A server an agent backgrounds lands
+> in a sandboxed network namespace and is unreachable from your browser. Use your real
+> terminal (in Claude Code, prefix with `!`). Browsers treat `127.0.0.1` as a secure
+> context, so the webcam works there over plain HTTP — use `127.0.0.1`, not the LAN IP.
+
+The HTTP routes that resolve a library from an extracted `out/` (or a `.4sb` archive)
+land in a later phase; until then the server serves the front-end shell and `/healthz`.
+
 ## Status
 
 - [x] Container format decoded (`4SBV03`)

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Gaze accuracy spike — WebGazer</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #111; color: #eee;
+    font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #hud {
+    position: fixed; top: 8px; left: 8px; z-index: 30;
+    background: rgba(0,0,0,.6); padding: 10px 12px; border-radius: 8px;
+    max-width: 340px;
+  }
+  #hud h1 { font-size: 14px; margin: 0 0 6px; }
+  #hud button { font: inherit; margin: 2px 4px 2px 0; padding: 4px 8px; cursor: pointer; }
+  #hud .row { margin: 4px 0; }
+  #hud label { display: inline-block; }
+  #metrics { font-variant-numeric: tabular-nums; white-space: pre; }
+  /* calibration dots */
+  .cal-dot {
+    position: fixed; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+    border-radius: 50%; background: #e33; border: 2px solid #fff; z-index: 25;
+    cursor: pointer; opacity: .9; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; color: #fff;
+  }
+  .cal-dot.done { background: #393; }
+  /* the descending target band */
+  #band {
+    position: fixed; left: 0; right: 0; height: 56px; z-index: 10;
+    background: rgba(60,140,255,.30);
+    border-top: 2px solid #6cf; border-bottom: 2px solid #6cf;
+    display: none;
+  }
+  #band::after {
+    content: "read here"; position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%); color: #cfe8ff; font-size: 12px;
+  }
+  /* live gaze marker */
+  #gaze {
+    position: fixed; left: 0; top: 0; width: 16px; height: 16px;
+    margin: -8px 0 0 -8px; border-radius: 50%; z-index: 20;
+    background: rgba(255,220,0,.5); border: 1px solid #ffea00; display: none;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div id="hud">
+    <h1>Gaze accuracy spike</h1>
+    <div class="row" id="phase">Phase: loading WebGazer…</div>
+    <div class="row">
+      <button id="btn-calibrate" disabled>1. Calibrate (9 pts)</button>
+      <button id="btn-run" disabled>2. Run pass</button>
+      <button id="btn-stop" disabled>Stop</button>
+    </div>
+    <div class="row">
+      <label>Band speed (px/s): <input id="speed" type="number" value="120" min="20" max="600" step="10" style="width:64px"></label>
+    </div>
+    <div class="row">
+      <label><input id="show-pred" type="checkbox" checked> show WebGazer dot/video</label>
+    </div>
+    <div class="row" id="metrics">error: —    median: —</div>
+    <div class="row">
+      <button id="btn-csv" disabled>Download CSV</button>
+      <span id="samplecount">0 samples</span>
+    </div>
+    <div class="row" style="opacity:.7">Calibrate seated at the instrument under
+      normal lighting, then run 3–4 passes. See the plan, Task 0.2.</div>
+  </div>
+
+  <div id="band"></div>
+  <div id="gaze"></div>
+
+  <script src="../vendor/webgazer.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    const phaseEl = document.getElementById("phase");
+    const metricsEl = document.getElementById("metrics");
+    const bandEl = document.getElementById("band");
+    const gazeEl = document.getElementById("gaze");
+    const sampleCountEl = document.getElementById("samplecount");
+    const btnCal = document.getElementById("btn-calibrate");
+    const btnRun = document.getElementById("btn-run");
+    const btnStop = document.getElementById("btn-stop");
+    const btnCsv = document.getElementById("btn-csv");
+    const speedInput = document.getElementById("speed");
+    const showPred = document.getElementById("show-pred");
+
+    // --- shared gaze state, updated by WebGazer's listener ---
+    let latestGaze = null;   // {x, y, t}
+    let recording = false;
+    let rows = [];           // {t, targetY, gazeY, confidence}
+    const recentErr = [];    // rolling window of |gazeY-targetY| %, for median display
+
+    function median(arr) {
+      if (!arr.length) return NaN;
+      const s = [...arr].sort((a, b) => a - b);
+      const m = s.length >> 1;
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    }
+
+    // --- WebGazer setup ---
+    function applyPredVisibility() {
+      const on = showPred.checked;
+      webgazer.showVideoPreview(on).showPredictionPoints(on).showFaceOverlay(on).showFaceFeedbackBox(on);
+    }
+    showPred.addEventListener("change", applyPredVisibility);
+
+    // The Brown build defaults faceMeshSolutionPath to the relative
+    // "./mediapipe/face_mesh", whose model files 404 (they were never shipped),
+    // which makes begin() throw the cryptic "t is not a function". Pin the
+    // FaceMesh assets to a known-good MediaPipe CDN version instead.
+    webgazer.params.faceMeshSolutionPath =
+      "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619";
+
+    webgazer.setRegression("ridge").setGazeListener(function (data, clock) {
+      if (!data) return;
+      latestGaze = { x: data.x, y: data.y, t: clock };
+    });
+
+    webgazer.begin().then(function () {
+      applyPredVisibility();
+      phaseEl.textContent = "Phase: ready — calibrate first";
+      btnCal.disabled = false;
+      requestAnimationFrame(loop);
+    }).catch(function (err) {
+      phaseEl.textContent = "Phase: WebGazer failed: " + err;
+    });
+
+    // --- 9-point click calibration grid ---
+    let calDots = [];
+    const CAL_CLICKS = 3;   // clicks per point feed WebGazer's regression
+    function startCalibration() {
+      clearCalDots();
+      btnCal.disabled = true;
+      phaseEl.textContent = "Phase: calibrating — click each red dot " + CAL_CLICKS + "×";
+      const xs = [0.1, 0.5, 0.9], ys = [0.1, 0.5, 0.9];
+      let remaining = 0;
+      for (const fy of ys) for (const fx of xs) {
+        const dot = document.createElement("div");
+        dot.className = "cal-dot";
+        dot.style.left = (fx * 100) + "vw";
+        dot.style.top = (fy * 100) + "vh";
+        let clicks = 0;
+        dot.textContent = CAL_CLICKS;
+        dot.addEventListener("click", function () {
+          clicks++;
+          // WebGazer records click locations automatically as training data.
+          dot.textContent = Math.max(0, CAL_CLICKS - clicks);
+          if (clicks >= CAL_CLICKS) {
+            dot.classList.add("done");
+            dot.style.pointerEvents = "none";
+            remaining--;
+            if (remaining === 0) finishCalibration();
+          }
+        });
+        document.body.appendChild(dot);
+        calDots.push(dot);
+        remaining++;
+      }
+    }
+    function finishCalibration() {
+      clearCalDots();
+      phaseEl.textContent = "Phase: calibrated — run a pass";
+      btnRun.disabled = false;
+      btnCal.disabled = false;
+    }
+    function clearCalDots() { calDots.forEach((d) => d.remove()); calDots = []; }
+
+    // --- descending target band pass ---
+    let pass = null;   // {startMs, y}
+    function startRun() {
+      bandEl.style.display = "block";
+      recording = true;
+      rows = [];
+      recentErr.length = 0;
+      pass = { y: 0 };
+      btnRun.disabled = true;
+      btnStop.disabled = false;
+      phaseEl.textContent = "Phase: RUNNING — follow the blue band with your eyes";
+    }
+    function stopRun() {
+      recording = false;
+      bandEl.style.display = "none";
+      pass = null;
+      btnStop.disabled = true;
+      btnRun.disabled = false;
+      btnCsv.disabled = rows.length === 0;
+      phaseEl.textContent = "Phase: stopped — " + rows.length + " samples. Run again or download CSV.";
+    }
+
+    let lastT = null;
+    function loop(now) {
+      // live gaze marker
+      if (latestGaze && showPred.checked) {
+        gazeEl.style.display = "block";
+        gazeEl.style.left = latestGaze.x + "px";
+        gazeEl.style.top = latestGaze.y + "px";
+      } else {
+        gazeEl.style.display = "none";
+      }
+
+      if (recording && pass) {
+        const dt = lastT == null ? 0 : (now - lastT) / 1000;
+        const speed = Math.max(20, Number(speedInput.value) || 120);
+        pass.y += speed * dt;
+        const vh = window.innerHeight;
+        const bandH = bandEl.offsetHeight;
+        if (pass.y > vh - bandH) {        // reached the bottom → end this pass
+          stopRun();
+        } else {
+          bandEl.style.top = pass.y + "px";
+          const targetY = pass.y + bandH / 2;          // center of the band
+          const gy = latestGaze ? latestGaze.y : NaN;
+          const conf = latestGaze ? 1 : 0;             // WebGazer has no native confidence
+          rows.push({ t: now, targetY: targetY, gazeY: gy, confidence: conf });
+          if (Number.isFinite(gy)) {
+            const errPct = Math.abs(gy - targetY) / vh * 100;
+            recentErr.push(errPct);
+            if (recentErr.length > 30) recentErr.shift();
+            metricsEl.textContent =
+              "error: " + errPct.toFixed(1) + "%   median(30): " +
+              median(recentErr).toFixed(1) + "%";
+          }
+          sampleCountEl.textContent = rows.length + " samples";
+        }
+      }
+      lastT = now;
+      requestAnimationFrame(loop);
+    }
+
+    // --- CSV export ---
+    function downloadCsv() {
+      const header = "t,targetY,gazeY,confidence\n";
+      const body = rows.map((r) =>
+        [r.t.toFixed(1), r.targetY.toFixed(1),
+         Number.isFinite(r.gazeY) ? r.gazeY.toFixed(1) : "", r.confidence].join(",")
+      ).join("\n");
+      const blob = new Blob([header + body], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "gaze-spike.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    btnCal.addEventListener("click", startCalibration);
+    btnRun.addEventListener("click", startRun);
+    btnStop.addEventListener("click", stopRun);
+    btnCsv.addEventListener("click", downloadCsv);
+  })();
+  </script>
+</body>
+</html>
