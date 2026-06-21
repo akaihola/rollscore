@@ -11,7 +11,8 @@
  * is +1 (forward) / -1 (back), `prevPiece`, `nextPiece`, `backToChooser`,
  * `toggleAnnotations`, `startCalibration`, `captureCalibration` (record the
  * cursor position as a gaze training point — see the reader), `toggleTuning`
- * (show/hide the dev tuning panel).
+ * (show/hide the dev tuning panel), `toggleCrop` (switch between forScore's
+ * zoomed/cropped view and the full-page view).
  *
  * Returns an unbind function that detaches both listeners.
  */
@@ -31,6 +32,7 @@ const KEY_ACTIONS = {
   c: (h) => h.startCalibration?.(),
   g: (h) => h.captureCalibration?.(),
   t: (h) => h.toggleTuning?.(),
+  z: (h) => h.toggleCrop?.(),
 };
 
 /**

@@ -148,11 +148,14 @@ def render_cached(
 
 
 def page_dimensions(root: ExtractionRoot, score_file: str) -> list[dict]:
-    """Per-page rendered size — the layout contract the front-end reads.
+    """Per-page rendered size and forScore crop params — the layout contract the front-end reads.
 
     Each page is fit to the canvas width, so the width is constant but the height
     follows the page aspect (`crop.canvas_size`). The front-end reserves each
     page's height from these before the image loads.
+
+    Also returns `zoom` and `trOffset` from the manifest so the front-end can apply
+    forScore's crop as a CSS transform without a separate server-side render.
     """
     raw_name, doc = _resolve_doc(root, score_file)
     pdf_path = root.pdfs_dir / raw_name
@@ -162,4 +165,14 @@ def page_dimensions(root: ExtractionRoot, score_file: str) -> list[dict]:
     else:
         # No PDF on disk (metadata-only): fall back to the standard canvas size.
         sizes = [canvas_size(pymupdf.Rect(0, 0, *CANVAS_PT))] * len(doc.get("pages", {}))
-    return [{"width": w, "height": h} for w, h in sizes]
+    pages_meta = doc.get("pages", {})
+    result = []
+    for i, (w, h) in enumerate(sizes):
+        p = pages_meta.get(str(i + 1), {})
+        result.append({
+            "width": w,
+            "height": h,
+            "zoom": float(p.get("zoom", 1.0)),
+            "trOffset": p.get("trOffset") or None,
+        })
+    return result

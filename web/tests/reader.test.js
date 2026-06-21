@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+  applyCropMode,
   buildStrip,
   computeResumeScroll,
   scrollToResume,
@@ -37,6 +38,15 @@ describe("buildStrip", () => {
     expect(imgs.map((i) => i.dataset.page)).toEqual(["1", "2"]);
   });
 
+  it("wraps each img in a div.page-wrapper", () => {
+    const strip = buildStrip({ file, pageDims: pageDims() });
+    const wrappers = [...strip.querySelectorAll(".page-wrapper")];
+    expect(wrappers).toHaveLength(2);
+    for (const w of wrappers) {
+      expect(w.querySelector("img.page")).not.toBeNull();
+    }
+  });
+
   it("makes pages responsive: full container width, aspect-ratio reserved", () => {
     // The image must scale to the container width (never its natural 2160px)
     // and reserve its height before load via the page's aspect-ratio.
@@ -58,6 +68,90 @@ describe("buildStrip", () => {
     });
     const imgs = [...strip.querySelectorAll("img")];
     expect(imgs[0].getAttribute("src")).toBe(pageUrl(file, 1, true));
+  });
+});
+
+// La Maja page 1 has a tight horizontal crop: zoom=1.1817, trOffset=[79, 83.69].
+// Page canvas is 2160×2795 (612×792 pt page at fit=2160/612).
+// Expected tx% = -80*79/612 ≈ -10.327, ty% = -80*83.69*2160/(612*2795) ≈ -8.454
+const CANVAS_W = 2160;
+const CANVAS_PT_W = 612;
+const laMajaExtDims = [
+  { width: CANVAS_W, height: 2795, zoom: 1.1817, trOffset: [79.0, 83.69] }, // p1: tight horiz crop
+  { width: CANVAS_W, height: 2795, zoom: 1.1073, trOffset: [43.56, 15.58] }, // p2: more margin
+  { width: CANVAS_W, height: 2795, zoom: 1.0, trOffset: null },              // p3: no crop
+];
+
+function expectedTx(trOffset0) {
+  return (-80 * trOffset0) / CANVAS_PT_W;
+}
+function expectedTy(trOffset1, canvasH) {
+  return (-80 * trOffset1 * CANVAS_W) / (CANVAS_PT_W * canvasH);
+}
+
+describe("applyCropMode", () => {
+  const file = "4 La Maja y el Ruisenor.pdf";
+
+  function buildLaMajaStrip() {
+    return buildStrip({ file, pageDims: laMajaExtDims });
+  }
+
+  it("in crop mode: sets transform and overflow:hidden on each cropped page", () => {
+    const strip = buildLaMajaStrip();
+    applyCropMode(strip, laMajaExtDims, true);
+
+    // Page 1 — tight horizontal crop
+    const w1 = strip.querySelectorAll(".page-wrapper")[0];
+    const img1 = w1.querySelector("img.page");
+    expect(img1.style.transformOrigin).toBe("0 0");
+    expect(img1.style.transform).not.toBe("");
+    expect(w1.style.overflow).toBe("hidden");
+
+    // Verify numeric values for page 1
+    const tx1 = expectedTx(79.0);
+    const ty1 = expectedTy(83.69, 2795);
+    expect(img1.style.transform).toContain(`translate(${tx1}%`);
+    expect(img1.style.transform).toContain(`scale(1.1817)`);
+
+    // Page 2 — has crop
+    const w2 = strip.querySelectorAll(".page-wrapper")[1];
+    const img2 = w2.querySelector("img.page");
+    expect(img2.style.transform).not.toBe("");
+    expect(w2.style.overflow).toBe("hidden");
+  });
+
+  it("in crop mode: page with default params (zoom=1, no trOffset) gets no transform", () => {
+    const strip = buildLaMajaStrip();
+    applyCropMode(strip, laMajaExtDims, true);
+
+    const w3 = strip.querySelectorAll(".page-wrapper")[2];
+    const img3 = w3.querySelector("img.page");
+    expect(img3.style.transform).toBe("");
+    expect(w3.style.overflow).toBe("");
+  });
+
+  it("in full-page mode: clears transform and overflow on all pages", () => {
+    const strip = buildLaMajaStrip();
+    // First apply crop, then clear it
+    applyCropMode(strip, laMajaExtDims, true);
+    applyCropMode(strip, laMajaExtDims, false);
+
+    for (const wrapper of strip.querySelectorAll(".page-wrapper")) {
+      const img = wrapper.querySelector("img.page");
+      expect(img.style.transform).toBe("");
+      expect(img.style.transformOrigin).toBe("");
+      expect(wrapper.style.overflow).toBe("");
+    }
+  });
+
+  it("tx% is negative when trOffset[0] > 0 (shifts img left to show the right crop region)", () => {
+    const strip = buildLaMajaStrip();
+    applyCropMode(strip, laMajaExtDims, true);
+    const img1 = strip.querySelectorAll("img.page")[0];
+    // transform is e.g. "translate(-10.327%, -8.454%) scale(1.1817)"
+    const match = img1.style.transform.match(/translate\((-?[\d.]+)%/);
+    expect(match).not.toBeNull();
+    expect(parseFloat(match[1])).toBeLessThan(0);
   });
 });
 

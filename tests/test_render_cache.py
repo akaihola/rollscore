@@ -77,4 +77,4 @@ def test_page_dimensions(tmp_path):
     dims = page_dimensions(root, "Sonata.pdf")
     assert len(dims) == 2  # 2-page synthetic PDF
     # Per-page full-page canvas: width 2160, height scaled by the same fit.
-    assert dims[0] == {"width": 2160, "height": round(792 * 2160 / 612)}
+    assert dims[0] == {"width": 2160, "height": round(792 * 2160 / 612), "zoom": 1.0, "trOffset": None}

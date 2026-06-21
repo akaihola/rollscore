@@ -94,18 +94,22 @@ export function throttle(fn, ms) {
 /**
  * Build the page strip for a score.
  *
- * Returns a `div.strip` containing one lazy `<img>` per page (`data-page` =
- * 1-based index). Each image is sized responsively — `width: 100%` of the strip
- * with its height reserved before load via the page's `aspect-ratio` — so a
- * render wider than the window scales down instead of being clipped, and the
- * layout survives a resize. The scroll/resume maths derive heights from the
- * *measured* strip width at runtime (see the geometry helpers above).
+ * Returns a `div.strip` containing one `div.page-wrapper > img.page` per page
+ * (`data-page` = 1-based index on the img). Each image is sized responsively —
+ * `width: 100%` of the strip with its height reserved before load via the
+ * page's `aspect-ratio` — so a render wider than the window scales down instead
+ * of being clipped, and the layout survives a resize. The wrapper div exists so
+ * `applyCropMode` can set `overflow: hidden` and the img can be CSS-transformed
+ * without affecting strip geometry. The scroll/resume maths derive heights from
+ * the *measured* strip width at runtime (see the geometry helpers above).
  */
 export function buildStrip({ file, pageDims, annotated = false }) {
   const strip = document.createElement("div");
   strip.className = "strip";
 
   pageDims.forEach((dim, i) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "page-wrapper";
     const img = document.createElement("img");
     img.className = "page";
     img.loading = "lazy";
@@ -114,10 +118,51 @@ export function buildStrip({ file, pageDims, annotated = false }) {
     img.style.width = "100%";
     img.style.height = "auto";
     img.style.aspectRatio = `${dim.width} / ${dim.height}`;
-    strip.append(img);
+    wrapper.append(img);
+    strip.append(wrapper);
   });
 
   return strip;
+}
+
+/**
+ * Apply or clear the forScore crop CSS transform on each page in the strip.
+ *
+ * In crop mode each img is translated and scaled so only the region forScore
+ * displayed on the iPad is visible within its wrapper (which gets
+ * `overflow: hidden`). The translate percentages are derived from the same
+ * coefficients as `crop.overlay_affine` and are strip-width-independent, so
+ * no resize handler is needed.
+ *
+ * Pages with default crop params (`zoom = 1`, `trOffset = null`) are visually
+ * identical in both modes — the identity transform is not applied.
+ *
+ * @param {HTMLElement} strip
+ * @param {Array<{width: number, height: number, zoom?: number, trOffset?: number[]|null}>} extDims
+ * @param {boolean} cropMode
+ */
+export function applyCropMode(strip, extDims, cropMode) {
+  const wrappers = strip.querySelectorAll(".page-wrapper");
+  wrappers.forEach((wrapper, i) => {
+    const img = wrapper.querySelector("img.page");
+    const { zoom = 1, trOffset = null, width, height } = extDims[i] ?? {};
+    if (cropMode && (zoom !== 1 || trOffset)) {
+      const [ox, oy] = trOffset ?? [0, 0];
+      // tx/ty are percentages of the img's own width/height (resize-independent).
+      // Derived from overlay_affine: overlay = zoom * canvas + (-0.8 * trOffset * PX_PER_PT).
+      // The crop origin in canvas space is at (0.8*trOffset/PX_PER_PT / zoom) pts,
+      // which in img-width-% and img-height-% gives the formulae below.
+      const tx = (-80 * ox) / 612;
+      const ty = (-80 * oy * width) / (612 * height);
+      img.style.transformOrigin = "0 0";
+      img.style.transform = `translate(${tx}%, ${ty}%) scale(${zoom})`;
+      wrapper.style.overflow = "hidden";
+    } else {
+      img.style.transform = "";
+      img.style.transformOrigin = "";
+      wrapper.style.overflow = "";
+    }
+  });
 }
 
 /**

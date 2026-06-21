@@ -15,6 +15,7 @@ function spies() {
     startCalibration: vi.fn(),
     captureCalibration: vi.fn(),
     toggleTuning: vi.fn(),
+    toggleCrop: vi.fn(),
   };
 }
 
@@ -86,6 +87,11 @@ describe("bindControls — keyboard", () => {
   it("t toggles the tuning panel", () => {
     keydown("t");
     expect(handlers.toggleTuning).toHaveBeenCalledTimes(1);
+  });
+
+  it("z toggles the crop mode", () => {
+    keydown("z");
+    expect(handlers.toggleCrop).toHaveBeenCalledTimes(1);
   });
 
   it("an unhandled key fires nothing", () => {

@@ -24,6 +24,7 @@ import {
 } from "./api.js";
 import { buildChooser } from "./chooser.js";
 import {
+  applyCropMode,
   buildStrip,
   computeResumeScroll,
   pageToScroll,
@@ -126,23 +127,24 @@ function controllerParams(tuning, rect) {
   };
 }
 
-async function openReader({ file, page, pieces = [], setlist = null }) {
+async function openReader({ file, page, pieces = [], setlist = null, initialCropMode = true }) {
   // Build the shell first so we can measure the scroller's width before sizing
   // the page strip, then fill it once the page metadata arrives.
   const root = el("div", "reader");
   const bar = el("div", "toolbar");
   const back = el("button", null, "← Library");
   const annotateBtn = el("button", null, "Annotations: on");
+  const cropBtn = el("button", null, "Crop: on");
   const gazeBtn = el("button", null, "Gaze: off");
   const status = el("span", "status");
-  bar.append(back, annotateBtn, gazeBtn, status);
+  bar.append(back, annotateBtn, cropBtn, gazeBtn, status);
   const scroller = el("div", "scroller");
   root.append(bar, scroller);
   app.replaceChildren(root);
 
-  let pageDims, resume, tuning, savedCal;
+  let extDims, resume, tuning, savedCal;
   try {
-    [pageDims, resume, tuning, savedCal] = await Promise.all([
+    [extDims, resume, tuning, savedCal] = await Promise.all([
       getPages(file),
       getResume(file),
       getTuning(),
@@ -154,8 +156,10 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   }
 
   let annotated = true;
-  const strip = buildStrip({ file, pageDims, annotated });
+  let cropMode = initialCropMode; // cropped by default; z key toggles
+  const strip = buildStrip({ file, extDims: extDims, annotated });
   scroller.append(strip);
+  applyCropMode(strip, extDims, cropMode);
 
   // Pages are responsive (width: 100%), so the geometry depends on the actual
   // rendered width — measured fresh so it stays correct across a window resize.
@@ -163,11 +167,11 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
 
   // Restore: a saved resume wins; otherwise jump to the requested piece page.
   scroller.scrollTop = resume
-    ? computeResumeScroll(pageDims, stripWidth(), resume)
-    : pageToScroll(pageDims, stripWidth(), page);
+    ? computeResumeScroll(extDims, stripWidth(), resume)
+    : pageToScroll(extDims, stripWidth(), page);
 
   const save = throttle(() => {
-    putResume(file, scrollToResume(pageDims, stripWidth(), scroller.scrollTop)).catch(
+    putResume(file, scrollToResume(extDims, stripWidth(), scroller.scrollTop)).catch(
       () => {}
     );
   }, 1000);
@@ -243,6 +247,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
         file: next.file,
         page: 1,
         setlist: { ...setlist, index: setlist.index + 1 },
+        initialCropMode: cropMode,
       });
     });
     banner.append(go);
@@ -319,7 +324,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
   }
 
   function currentPage() {
-    return scrollToResume(pageDims, stripWidth(), scroller.scrollTop).page;
+    return scrollToResume(extDims, stripWidth(), scroller.scrollTop).page;
   }
 
   function jumpPiece(dir) {
@@ -327,7 +332,7 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     clearAffordance();
     const target = pieceJumpPage(pieces, currentPage(), dir);
     if (target != null) {
-      scroller.scrollTop = pageToScroll(pageDims, stripWidth(), target);
+      scroller.scrollTop = pageToScroll(extDims, stripWidth(), target);
     }
   }
 
@@ -374,6 +379,11 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
       setAnnotation(strip, file, annotated);
       annotateBtn.textContent = `Annotations: ${annotated ? "on" : "off"}`;
     },
+    toggleCrop: () => {
+      cropMode = !cropMode;
+      applyCropMode(strip, extDims, cropMode);
+      cropBtn.textContent = `Crop: ${cropMode ? "on" : "off"}`;
+    },
     startCalibration,
     captureCalibration,
     toggleTuning: () => {
@@ -403,6 +413,11 @@ async function openReader({ file, page, pieces = [], setlist = null }) {
     annotated = !annotated;
     setAnnotation(strip, file, annotated);
     annotateBtn.textContent = `Annotations: ${annotated ? "on" : "off"}`;
+  });
+  cropBtn.addEventListener("click", () => {
+    cropMode = !cropMode;
+    applyCropMode(strip, extDims, cropMode);
+    cropBtn.textContent = `Crop: ${cropMode ? "on" : "off"}`;
   });
   gazeBtn.addEventListener("click", () => {
     clearAffordance();

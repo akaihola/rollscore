@@ -94,7 +94,7 @@ def test_page_dimensions_endpoint(client):
     r = client.get(f"/api/score/{SCORE_FILE}/pages")
     assert r.status_code == 200
     dims = r.json()
-    assert dims == [{"width": 2160, "height": round(792 * 2160 / 612)}]
+    assert dims == [{"width": 2160, "height": round(792 * 2160 / 612), "zoom": 1.0, "trOffset": None}]
 
 
 # --- Task 6.3: resume + tuning ----------------------------------------------
