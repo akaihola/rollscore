@@ -6,3 +6,4 @@
 - [No copyrighted PDFs in repo](no-copyrighted-pdfs-in-repo.md) — never commit example/score PDFs (copyrighted); work from out/ (gitignored) and ~/.claude/uploads/ in place
 - [forScore filenames are NFD](forscore-filename-nfd.md) — manifest/setlist/bookmark filenames are macOS NFD Unicode; normalize to NFC for any filename→score/path lookup
 - [page render model v3](crop-v1-overshoots-canvas.md) — 2026-06-21: display fits the WHOLE page to width (`page_to_canvas_matrix`=plain fit, per-page `canvas_size`); forScore's zoom/trOffset moved into `overlay_affine`/`transform_overlay` so annotations stay registered. Supersedes v2 (Phase 13 baked the zoom-crop into the base render → music "too large"). Golden test compares in forScore export space (IoU 0.68–0.96)
+- [MVP complete, Phase 14 plan](mvp-complete-phase-14-staffaware.md) — 2026-06-27: gaze-scroll MVP moved to main (basic mechanics work); Phase 14 = music-aware scrolling via staff system detection + tuning

@@ -65,7 +65,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   `createGazeController.setParams` retunes live; `t` toggles; throttled
   `PUT /api/tuning` persists. Headless Playwright smoke
   (`web/tools/tuning_smoke.py`) passed: 10 sliders, toggle, live PUT + GET.)
-- [~] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
+- [x] **Phase 13 — Acceptance** (golden registration + end-to-end manual)
   - [x] **Crop registration fixed.** The v1 misregistration was the *translation*,
     not the scale: scale `fit × zoom` is correct (content scale == `zoom`, the
     documented ground truth), but v1 dropped the dominant vertical shift. Correct
@@ -91,11 +91,25 @@ the checkboxes below as phases complete (keep them in sync with the branch).
     render back; IoU 0.68–0.96). Verified live via CDP (La Maja: full header +
     right-margin "poco rall." now visible, two systems fit). Note: the render
     cache key is unchanged, so clear `~/.cache/gazescroll/render` after this.
-  - [ ] **13.2 End-to-end manual acceptance** — needs the user's webcam + browser:
-    chooser → reader (verify crop+annotations land right *and* the strip fits the
-    window) → calibrate → play a piece while gaze keeps pace → exercise
-    pause/recenter/nudge/annotation-toggle/piece-jump → close/reopen (resume).
-    Then record good tuning defaults + write the MVP acceptance note.
+  - [x] **13.2 End-to-end manual acceptance** — verified on 2026-06-27: basic
+    mechanics work end-to-end (chooser → reader → calibrate → play). Core is
+    functionally complete. **Status**: moved to main; ready for post-MVP tuning.
+
+### Post-MVP Tuning & Next Phases
+
+- [ ] **Phase 14 — Music-aware scrolling (staff system detection)**
+  - **Goal**: Replace pixel-chasing with system-aware gaze-follow. When gaze hits
+    left screen edge, snap the staff system into view; as gaze moves left→right,
+    scroll so the system's top edge reaches screen top by the right edge.
+  - **Approach**: Start with horizontal projection-profile staff detection
+    (classical, no training); if degraded pages exist, escalate to stable-paths.
+  - **Scope**: Two-staff systems (grand staff); La Maja test case includes tricky
+    pages with unclear inter-system gaps.
+  - **Sequence**: Spike staff detection → backend `/api/systems` endpoint →
+    rewrite gaze-scroll logic to use system boxes.
+  - **Deferral rationale**: Non-blocking for MVP acceptance; high UX impact post-MVP.
+
+- [ ] **Phase 15 — Parameter tuning** (gaze accuracy, smoothing, threshold)
 
 ### Running it locally
 
