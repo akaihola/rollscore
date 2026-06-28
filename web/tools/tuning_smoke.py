@@ -46,14 +46,14 @@ def main() -> int:
     server = subprocess.Popen(
         [
             "uv", "run", "uvicorn",
-            "gazescroll.app:create_app", "--factory",
+            "rollscore.app:create_app", "--factory",
             "--host", "127.0.0.1", "--port", str(port),
         ],
         cwd=WORKTREE,
         env={
             **os.environ,
-            "GAZESCROLL_SOURCE": str(WORKTREE / "out"),
-            "GAZESCROLL_STATE": str(state_file),
+            "ROLLSCORE_SOURCE": str(WORKTREE / "out"),
+            "ROLLSCORE_STATE": str(state_file),
         },
     )
     try:

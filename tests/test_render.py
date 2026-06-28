@@ -1,8 +1,8 @@
 import pymupdf
 from PIL import Image
 
-from gazescroll.crop import canvas_size
-from gazescroll.render import composite_overlay, render_page_image, transform_overlay
+from rollscore.crop import canvas_size
+from rollscore.render import composite_overlay, render_page_image, transform_overlay
 
 
 def _one_page_pdf(tmp_path, width=612, height=792):

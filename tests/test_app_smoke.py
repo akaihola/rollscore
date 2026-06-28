@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from gazescroll.app import create_app
+from rollscore.app import create_app
 
 
 def test_healthz_ok():

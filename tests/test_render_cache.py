@@ -3,10 +3,10 @@ import json
 import pymupdf
 from PIL import Image
 
-from gazescroll import render as render_mod
-from gazescroll.crop import CANVAS_PX
-from gazescroll.ingest import ExtractionRoot
-from gazescroll.render import page_dimensions, render_cached
+from rollscore import render as render_mod
+from rollscore.crop import CANVAS_PX
+from rollscore.ingest import ExtractionRoot
+from rollscore.render import page_dimensions, render_cached
 
 
 def _make_root(tmp_path):
@@ -41,7 +41,7 @@ def _make_root(tmp_path):
 
 
 def test_render_cached_hits_and_variants(tmp_path, monkeypatch):
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(tmp_path / "cache"))
     root = _make_root(tmp_path)
 
     calls = []

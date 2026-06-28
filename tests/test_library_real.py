@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from gazescroll.ingest import resolve_source
-from gazescroll.library import load_library
+from rollscore.ingest import resolve_source
+from rollscore.library import load_library
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 

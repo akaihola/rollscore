@@ -1,9 +1,9 @@
-from gazescroll.cli import build_config
+from rollscore.cli import build_config
 
 
 def test_defaults():
     cfg = build_config([])
-    assert cfg["app"] == "gazescroll.app:create_app"
+    assert cfg["app"] == "rollscore.app:create_app"
     assert cfg["factory"] is True
     assert cfg["host"] == "127.0.0.1"
     assert cfg["port"] == 8765
@@ -18,8 +18,8 @@ def test_flag_overrides():
 
 
 def test_env_defaults(monkeypatch):
-    monkeypatch.setenv("GAZESCROLL_HOST", "0.0.0.0")
-    monkeypatch.setenv("GAZESCROLL_PORT", "9100")
+    monkeypatch.setenv("ROLLSCORE_HOST", "0.0.0.0")
+    monkeypatch.setenv("ROLLSCORE_PORT", "9100")
     cfg = build_config([])
     assert cfg["host"] == "0.0.0.0"
     assert cfg["port"] == 9100

@@ -1,7 +1,7 @@
 [project]
-name = "forscore-archive"
+name = "rollscore"
 version = "0.1.0"
-description = "Extract ForScore .4sb Archive files (documents + annotations) on Linux"
+description = "Hands-free sheet-music reader that scrolls continuously from sensor input (gaze); imports forScore .4sb archives"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",
@@ -12,8 +12,8 @@ dependencies = [
 ]
 
 [project.scripts]
-# Run the reader server:  uv run gazescroll [--host H] [--port P] [--reload]
-gazescroll = "gazescroll.cli:main"
+# Run the reader server:  uv run rollscore [--host H] [--port P] [--reload]
+rollscore = "rollscore.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "httpx>=0.27"]
@@ -24,8 +24,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 # The reader package plus the standalone extractor module (imported by
-# gazescroll.ingest) — both must be importable from the installed console script.
-packages = ["gazescroll"]
+# rollscore.ingest) — both must be importable from the installed console script.
+packages = ["rollscore"]
 force-include = { "extract_4sb.py" = "extract_4sb.py" }
 
 [tool.pytest.ini_options]

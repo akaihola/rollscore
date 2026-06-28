@@ -1,4 +1,4 @@
-"""Detection tests for `gazescroll.systems`.
+"""Detection tests for `rollscore.systems`.
 
 Two layers:
 
@@ -23,10 +23,10 @@ import pymupdf
 import pytest
 from PIL import Image, ImageDraw
 
-from gazescroll import systems as systems_mod
-from gazescroll.ingest import ExtractionRoot
-from gazescroll.render import render_page_image
-from gazescroll.systems import detect_cached, detect_systems
+from rollscore import systems as systems_mod
+from rollscore.ingest import ExtractionRoot
+from rollscore.render import render_page_image
+from rollscore.systems import detect_cached, detect_systems
 
 from tests.conftest import LA_MAJA_PAGE1
 
@@ -185,7 +185,7 @@ def _make_root(tmp_path):
 
 
 def test_detect_cached_hits_and_invalidates(tmp_path, monkeypatch):
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(tmp_path / "cache"))
     root = _make_root(tmp_path)
 
     calls = []

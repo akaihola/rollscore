@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from gazescroll.app import create_app
-from gazescroll.crop import CANVAS_PX
+from rollscore.app import create_app
+from rollscore.crop import CANVAS_PX
 
 SCORE_FILE = "Sonata No. 1 | Test.pdf"  # spaces + pipe: must survive URL-encoding
 
@@ -46,7 +46,7 @@ def _make_out(tmp_path):
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(tmp_path / "cache"))
     out = _make_out(tmp_path)
     app = create_app(source=out, state_path=tmp_path / "state.json")
     return TestClient(app)
@@ -157,9 +157,9 @@ def test_calibration_round_trip(client):
 
 def test_calibration_legacy_migration_via_api(tmp_path, monkeypatch):
     import json
-    from gazescroll.app import create_app
+    from rollscore.app import create_app
     from fastapi.testclient import TestClient
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(tmp_path / "cache"))
     out = _make_out(tmp_path)
     legacy = [{"eyes": {}, "screenPos": [100, 200]}]
     state_file = tmp_path / "state.json"

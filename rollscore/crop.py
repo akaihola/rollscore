@@ -15,7 +15,7 @@ Display model (v3) — fit the **whole page** width to the canvas width:
     place them on the un-cropped full page, resample the overlay with the inverse
     of that crop: ``overlay_affine`` gives the PIL AFFINE coefficients mapping a
     full-page canvas pixel back to the overlay pixel (scale by ``zoom``, translate
-    by ``-0.8 * trOffset`` px) — see ``gazescroll.render.transform_overlay``.
+    by ``-0.8 * trOffset`` px) — see ``rollscore.render.transform_overlay``.
 
 Earlier models (v1/v2) baked forScore's zoom crop into the base render to mirror
 its export 1:1; that magnified the music ~15-25% and dropped the side margins,

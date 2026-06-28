@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from gazescroll.ingest import ExtractionRoot
-from gazescroll.library import load_library
+from rollscore.ingest import ExtractionRoot
+from rollscore.library import load_library
 
 
 def _make_root(tmp_path, manifest, setlists=None):

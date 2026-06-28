@@ -1,8 +1,8 @@
-"""FastAPI application factory for the gaze-scroll reader.
+"""FastAPI application factory for the Rollscore reader.
 
 The app is constructed around a resolved data source (a ``.4sb`` archive or an
 extracted ``out/`` dir) and a JSON state path. Both default from the environment
-(``GAZESCROLL_SOURCE`` / ``GAZESCROLL_STATE``) so the console script and tests
+(``ROLLSCORE_SOURCE`` / ``ROLLSCORE_STATE``) so the console script and tests
 can construct the app without arguments. When no source is configured the API
 routes return ``503`` while ``/healthz`` and the static front-end still work.
 """
@@ -17,11 +17,11 @@ from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from gazescroll.ingest import ExtractionRoot, resolve_source
-from gazescroll.library import Library, load_library
-from gazescroll.render import page_dimensions, render_cached
-from gazescroll.state import StateStore
-from gazescroll.systems import detect_cached
+from rollscore.ingest import ExtractionRoot, resolve_source
+from rollscore.library import Library, load_library
+from rollscore.render import page_dimensions, render_cached
+from rollscore.state import StateStore
+from rollscore.systems import detect_cached
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -43,10 +43,10 @@ def create_app(
     source: Path | str | None = None,
     state_path: Path | str | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="gaze-scroll score reader")
+    app = FastAPI(title="Rollscore")
 
-    source = source or os.environ.get("GAZESCROLL_SOURCE")
-    state_path = state_path or os.environ.get("GAZESCROLL_STATE")
+    source = source or os.environ.get("ROLLSCORE_SOURCE")
+    state_path = state_path or os.environ.get("ROLLSCORE_STATE")
 
     root: ExtractionRoot | None = resolve_source(Path(source)) if source else None
     app.state.root = root

@@ -1,4 +1,4 @@
-"""Gaze-scroll score reader — local web app backend.
+"""Rollscore — local web app backend.
 
 Reads an extracted forScore library and serves it to a browser front-end that
 auto-scrolls each score from webcam gaze. See

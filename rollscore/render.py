@@ -1,6 +1,6 @@
 """Render a PDF page to a full-page canvas and composite overlays.
 
-Each page is fit to the canvas width (`gazescroll.crop`) onto a white per-page
+Each page is fit to the canvas width (`rollscore.crop`) onto a white per-page
 RGBA canvas, top-left anchored — the whole page, never a zoom-cropped slice. The
 aux overlay (authored in forScore's cropped/zoomed space) is resampled into that
 full-page space (`transform_overlay`) so annotations stay registered, then
@@ -17,8 +17,8 @@ from pathlib import Path
 import pymupdf
 from PIL import Image
 
-from gazescroll.crop import CANVAS_PT, canvas_size, overlay_affine, page_to_canvas_matrix
-from gazescroll.ingest import ExtractionRoot, _cache_dir
+from rollscore.crop import CANVAS_PT, canvas_size, overlay_affine, page_to_canvas_matrix
+from rollscore.ingest import ExtractionRoot, _cache_dir
 
 
 def render_page_image(pdf_path: Path, page_index: int) -> Image.Image:

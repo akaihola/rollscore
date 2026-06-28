@@ -3,7 +3,7 @@
 
 WebGazer needs a stable origin (not file://) for getUserMedia to keep its
 camera grant. This is a throwaway stdlib server for the Phase 0 spike only;
-the real app is served by FastAPI (gazescroll.app).
+the real app is served by FastAPI (rollscore.app).
 
 Usage:
     python3 web/spike/serve.py            # serves web/ on http://localhost:8000

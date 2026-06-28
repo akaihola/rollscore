@@ -36,9 +36,9 @@ Open work, roughly priority-ordered. Status: `[ ]` open · `[~]` in progress · 
   shift ≈ `−0.8·trOffset_x`, not fully pinned). Full write-up in
   [docs/feature-coverage.md](docs/feature-coverage.md#overlay-registration).
 
-## Web app — gaze-scroll score reader
+## Web app — rollscore
 
-- [~] **Build the gaze-scroll score reader web app.** Design agreed 2026-06-13, see
+- [~] **Build the rollscore web app.** Design agreed 2026-06-13, see
   [docs/plans/2026-06-13-gaze-scroll-web-app-design.md](docs/plans/2026-06-13-gaze-scroll-web-app-design.md).
   Personal localhost tool: thin browser front-end + FastAPI/pymupdf backend reusing
   `extract_4sb.py`; ingests a `.4sb` or pre-extracted `out/`; lazily renders per-page crop +

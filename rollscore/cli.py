@@ -1,7 +1,7 @@
-"""Command-line entry point: run the gaze-scroll server with uvicorn.
+"""Command-line entry point: run the Rollscore server with uvicorn.
 
-Installed as the ``gazescroll`` console script (see pyproject ``[project.scripts]``).
-Host/port default from ``GAZESCROLL_HOST``/``GAZESCROLL_PORT``; flags win over env.
+Installed as the ``rollscore`` console script (see pyproject ``[project.scripts]``).
+Host/port default from ``ROLLSCORE_HOST``/``ROLLSCORE_PORT``; flags win over env.
 """
 from __future__ import annotations
 
@@ -12,19 +12,19 @@ import os
 def build_config(argv: list[str] | None = None) -> dict:
     """Parse CLI args into the kwargs passed to ``uvicorn.run``."""
     parser = argparse.ArgumentParser(
-        prog="gazescroll",
-        description="Run the gaze-scroll score-reader server.",
+        prog="rollscore",
+        description="Run the Rollscore score-reader server.",
     )
     parser.add_argument(
         "--host",
-        default=os.environ.get("GAZESCROLL_HOST", "127.0.0.1"),
-        help="bind address (default 127.0.0.1; env GAZESCROLL_HOST)",
+        default=os.environ.get("ROLLSCORE_HOST", "127.0.0.1"),
+        help="bind address (default 127.0.0.1; env ROLLSCORE_HOST)",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.environ.get("GAZESCROLL_PORT", "8765")),
-        help="bind port (default 8765; env GAZESCROLL_PORT)",
+        default=int(os.environ.get("ROLLSCORE_PORT", "8765")),
+        help="bind port (default 8765; env ROLLSCORE_PORT)",
     )
     parser.add_argument(
         "--reload",
@@ -33,7 +33,7 @@ def build_config(argv: list[str] | None = None) -> dict:
     )
     args = parser.parse_args(argv)
     return {
-        "app": "gazescroll.app:create_app",
+        "app": "rollscore.app:create_app",
         "factory": True,
         "host": args.host,
         "port": args.port,
