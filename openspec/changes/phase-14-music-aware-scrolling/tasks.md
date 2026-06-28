@@ -28,21 +28,21 @@
 ## 5. Frontend system-aware controller
 
 - [ ] 5.1 In `web/js/gaze/control.js` add active-system selection (forward-only) over strip-scaled boxes
-- [ ] 5.2 Add snap-target computation: on left-edge gaze entry, target = active system top − setpoint·viewportH (forward-only, clamped)
-- [ ] 5.3 Add left→right sweep interpolation between active and next system snap targets by gaze-x fraction across the music column
-- [ ] 5.4 Route the target through the existing bounded-step `stepController` discipline so the non-decreasing/bounded-delta invariant holds
-- [ ] 5.5 Per-page fallback: empty/failed systems route the frame through the existing pixel-chasing controller without throwing
+- [ ] 5.2 Add the snap start target: on left-edge gaze entry, scrollTarget = `sysBottom − viewportH` (minimal forward scroll bringing the whole active system into view; forward-only, clamped)
+- [ ] 5.3 Add left→right sweep interpolation of the active system alone: `lerp(sysBottom − viewportH, sysTop − m, fx)` by gaze-x fraction `fx` across the music column, so the active system rises from screen-bottom to screen-top
+- [ ] 5.4 Route the target through the existing bounded-step `stepController` discipline so the non-decreasing/bounded-delta invariant holds; clamp the tall-system case (`sysBottom − viewportH > sysTop − m`) to a plain top-align
+- [ ] 5.5 Per-page fallback: empty/failed systems route the frame through the existing vertical-gaze follower without throwing
 
 ## 6. Frontend wiring & tuning
 
 - [ ] 6.1 Fetch systems once per score in `web/js/main.js`/`reader.js`; scale boxes to measured strip width and thread the active page's boxes into the controller each frame
-- [ ] 6.2 Add `topSetpoint` and snap/interpolation smoothing params to `web/js/tuning.js`, applied live and persisted via `/api/tuning`
+- [ ] 6.2 Add the sweep-end top margin `m` and snap/interpolation smoothing params to `web/js/tuning.js`, applied live and persisted via `/api/tuning`
 
 ## 7. Frontend tests
 
 - [ ] 7.1 `web/tests/control.test.js`: active-system selection (inside system + inter-system gap), forward-only
-- [ ] 7.2 Snap target and sweep interpolation cases against synthetic gaze traces + box sets
-- [ ] 7.3 Fallback-to-pixel-chasing case when systems are empty/unavailable
+- [ ] 7.2 Snap-start (`sysBottom − viewportH`) and sweep interpolation (active system rising to top) cases against synthetic gaze traces + box sets, incl. the tall-system clamp
+- [ ] 7.3 Fallback-to-vertical-gaze-follower case when systems are empty/unavailable
 - [ ] 7.4 Confirm existing render, API, and control tests stay green
 
 ## 8. Acceptance & docs

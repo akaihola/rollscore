@@ -18,62 +18,67 @@ regressing to an earlier system).
 - **WHEN** the smoothed gaze y is between two systems
 - **THEN** the active system remains the most recently entered one, not an earlier system
 
-### Requirement: Snap the active system into view at the left edge
+### Requirement: Snap the active system fully into view at the left edge
 
-The controller SHALL bring the active system into full view when the gaze reaches the left
-edge of the music column (the start of a new reading line), smoothly scrolling so the
-system's top aligns to the configured top setpoint. The snap SHALL be smooth (bounded
-per-frame step), never a jarring jump, and SHALL remain forward-only.
+The controller SHALL bring the active system completely into view when the gaze reaches the
+left edge of the music column (the start of a new reading line), scrolling forward by the
+minimal amount needed so the whole system fits within the viewport. This "fully visible"
+position is the start point of the sweep interpolation below. The snap SHALL be smooth
+(bounded per-frame step), never a jarring jump, and SHALL remain forward-only.
 
-#### Scenario: Left-edge arrival snaps the system
+#### Scenario: Left-edge arrival brings the whole system into view
 
 - **WHEN** gaze x crosses into the left region of the music column with an active system
-- **THEN** the controller scrolls smoothly so the active system's top reaches the top setpoint
+- **THEN** the controller scrolls forward only as far as needed to bring the whole active system into view
 
 #### Scenario: Snap never scrolls backward
 
-- **WHEN** a snap target would require scrolling up (backward)
+- **WHEN** the active system is already fully visible (no forward scroll needed)
 - **THEN** the controller holds position rather than scrolling backward
 
 ### Requirement: Interpolate scroll across the left-to-right sweep
 
 The controller SHALL interpolate scroll as gaze sweeps from the left edge to the right edge
-of the music column while reading a system, so that by the time gaze reaches the right edge
-the next system's top has advanced to the top boundary of the viewport. Progress SHALL be
-driven by the gaze's horizontal position within the music column, producing predictable,
-musically-coherent advancement aligned to the score structure.
+of the music column while reading the active system, advancing from the system-fully-visible
+position (the snap start point) toward the position where the active system's top aligns
+with the top of the viewport (at the configured top margin). By the time gaze reaches the
+right edge, the active system's top SHALL have reached the top of the viewport — i.e. the
+controller scrolls forward (increasing `scrollTop`) as far as possible while keeping the
+active system completely visible. Progress SHALL be driven by the gaze's horizontal position within the music column,
+producing predictable, musically-coherent advancement aligned to the score structure.
 
-#### Scenario: Sweep advances toward the next system
+#### Scenario: Sweep raises the active system to the top
 
 - **WHEN** gaze moves left→right across the music column within the active system
-- **THEN** scroll advances proportionally so the next system's top approaches the screen top by the right edge
+- **THEN** scroll advances proportionally so the active system's top approaches the top of the viewport, reaching it by the right edge
 
 #### Scenario: Forward-only and clamped
 
 - **WHEN** interpolation produces a scroll target
 - **THEN** the applied scrollTop is non-decreasing and clamped to `[0, contentH - viewportH]`
 
-### Requirement: Fallback to pixel-chasing without systems
+### Requirement: Fallback to the vertical-gaze follower without systems
 
-The reader SHALL fall back to the existing pixel-chasing gaze controller when no system
-boxes are available for the current page (detection returned empty, or the systems fetch
-failed), so behavior never regresses below the MVP. Switching between system-aware and
-fallback modes SHALL not throw and SHALL preserve forward-only scrolling.
+The reader SHALL fall back to the existing vertical-gaze follower (the MVP controller driven
+only by the vertical component of gaze) when no system boxes are available for the current
+page (detection returned empty, or the systems fetch failed), so behavior never regresses
+below the MVP. Switching between system-aware and fallback modes SHALL not throw and SHALL
+preserve forward-only scrolling.
 
 #### Scenario: Page with no detected systems
 
 - **WHEN** the active page has an empty system list
-- **THEN** the reader drives scroll with the existing pixel-chasing controller
+- **THEN** the reader drives scroll with the existing vertical-gaze follower
 
 #### Scenario: Systems fetch failure
 
 - **WHEN** the systems request fails or is unavailable
-- **THEN** the reader continues with the pixel-chasing controller without error
+- **THEN** the reader continues with the vertical-gaze follower without error
 
 ### Requirement: Tunable system-aware parameters
 
-The system-aware controller SHALL expose its tuning parameters (at minimum the top
-setpoint and the snap/interpolation smoothing) through the existing tuning panel, applied
+The system-aware controller SHALL expose its tuning parameters (at minimum the sweep-end top
+margin and the snap/interpolation smoothing) through the existing tuning panel, applied
 live and persisted via the existing `/api/tuning` store.
 
 #### Scenario: Live tuning update
