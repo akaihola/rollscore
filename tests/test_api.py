@@ -145,10 +145,27 @@ def test_tuning_round_trip(client):
 
 
 def test_calibration_round_trip(client):
-    # No calibration stored yet.
-    assert client.get("/api/calibration").json() is None
+    assert client.get("/api/calibration", params={"orientation": "landscape"}).json() is None
 
-    blob = {"data": [[0.1, 0.2], [0.3, 0.4]], "settings": {"k": 1}}
-    r = client.put("/api/calibration", json=blob)
+    entry = {"blob": [{"eyes": {}, "screenPos": [400, 300]}], "dpr": 2.0}
+    r = client.put("/api/calibration", json=entry, params={"orientation": "landscape"})
     assert r.status_code == 200
-    assert client.get("/api/calibration").json() == blob
+    assert client.get("/api/calibration", params={"orientation": "landscape"}).json() == entry
+    # Other orientation is untouched.
+    assert client.get("/api/calibration", params={"orientation": "portrait"}).json() is None
+
+
+def test_calibration_legacy_migration_via_api(tmp_path, monkeypatch):
+    import json
+    from gazescroll.app import create_app
+    from fastapi.testclient import TestClient
+    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path / "cache"))
+    out = _make_out(tmp_path)
+    legacy = [{"eyes": {}, "screenPos": [100, 200]}]
+    state_file = tmp_path / "state.json"
+    state_file.write_text(json.dumps({"calibration": legacy}))
+    app2 = create_app(source=out, state_path=state_file)
+    c2 = TestClient(app2)
+    got = c2.get("/api/calibration", params={"orientation": "landscape"}).json()
+    assert got == {"blob": legacy, "dpr": None}
+    assert c2.get("/api/calibration", params={"orientation": "portrait"}).json() is None
