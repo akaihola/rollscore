@@ -97,16 +97,20 @@ the checkboxes below as phases complete (keep them in sync with the branch).
 
 ### Post-MVP Tuning & Next Phases
 
-- [ ] **Phase 14 — Music-aware scrolling (staff system detection)**
+- [~] **Phase 14 — Music-aware scrolling (staff system detection)**
   - **Goal**: Replace pixel-chasing with system-aware gaze-follow. When gaze hits
     left screen edge, snap the staff system into view; as gaze moves left→right,
     scroll so the system's top edge reaches screen top by the right edge.
-  - **Approach**: Start with horizontal projection-profile staff detection
-    (classical, no training); if degraded pages exist, escalate to stable-paths.
-  - **Scope**: Two-staff systems (grand staff); La Maja test case includes tricky
-    pages with unclear inter-system gaps.
-  - **Sequence**: Spike staff detection → backend `/api/systems` endpoint →
-    rewrite gaze-scroll logic to use system boxes.
+  - **Status (2026-06-28)**: code + tests complete on branch `phase-14-detection`.
+    Detection backend (`gazescroll/systems.py`), `/api/score/{file}/systems`
+    endpoint, system-aware controller (`createSystemController` in `control.js`),
+    debug overlay (`gaze/overlay.js`, toggle `o`), tuning params, and full backend
+    + 121 web tests all green. Projection-profile detection validated on all 6 La
+    Maja pages in the spike (deskew + barline-connector grouping; stable-paths NOT
+    needed). **Remaining: task 8.1 — manual webcam run to confirm feel and tune
+    params** (then archive the OpenSpec change).
+  - **Sequence**: Spike staff detection ✓ → backend `/api/systems` endpoint ✓ →
+    system-aware gaze-scroll logic ✓ → manual tuning (8.1, needs user).
   - **Deferral rationale**: Non-blocking for MVP acceptance; high UX impact post-MVP.
 
 - [ ] **Phase 15 — Parameter tuning** (gaze accuracy, smoothing, threshold)

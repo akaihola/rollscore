@@ -207,15 +207,23 @@ the overlay is empty.
   boxes overlap by ~7–69 px where notes interleave and are separated by a few px where a
   blank row exists (p1: 1/2 sep 11px, 2/3 ovl 7px, 3/4 ovl 15px). Overlap is real and handled.
 
-**Still open (frontend, Phase 5–6b):**
+**Resolved in the frontend implementation (2026-06-28, Phase 5–7):**
 
-- Top margin `m` for the sweep-end target: fixed px, fraction of viewport, or a tuning param?
-- Systems taller than the viewport: the snap start (`sysBottom − vh`) can exceed the
-  top-aligned end (`sysTop − m`) — clamp to a plain top-align. **Now concretely relevant:**
-  La Maja's 3-staff systems (pp. 4–5) are ~500–560 px tall and may exceed a short viewport.
-- Is the left-edge-saccade advance rule (D4) sufficient on its own, or is a minimum dwell /
-  sweep-progress threshold needed to avoid advancing on stray leftward glances?
-- Crossfade duration and shading opacity for the D7 overlay: fixed defaults vs tuning params.
+- ~~Top margin `m` for the sweep-end target?~~ **Resolved:** a tuning param
+  (`systemTopMargin`, default 24 px), live-editable and persisted like the rest.
+- ~~Systems taller than the viewport?~~ **Resolved:** `systemScrollTarget` detects
+  `snapStart ≥ sweepEnd` and clamps to a plain top-align (`sysTop − m`) for the whole
+  sweep, so a tall system never scrolls backward mid-sweep. Unit-tested.
+- ~~Is the left-edge-saccade advance rule sufficient on its own?~~ **Implemented as
+  saccade-only** (`createSystemSelector`: advance on `fx ≤ returnLeftFrac` only after a
+  prior `fx ≥ sweepRightFrac`); no vertical-containment input, so it is overlap-robust and
+  ignores a stray leftward glance. Whether a dwell/sweep-progress threshold is *also* needed
+  is left to the manual run (task 8.1) — the defaults (`sweepRightFrac 0.55`,
+  `returnLeftFrac 0.35`) are the starting point.
+- ~~Crossfade duration and shading opacity for the overlay?~~ **Resolved:** tuning params
+  (`overlayFadeMs` 250 ms, `overlayOpacity` 0.18).
+- ~~Music-column horizontal extent (source of `fx`)?~~ **Resolved:** reuse the existing
+  `columnX0`/`columnX1` tuning fractions — `fx` is the gaze-x position within that column.
 
 ## Future refinement (far future, not in scope)
 
