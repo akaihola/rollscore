@@ -2,12 +2,14 @@
 
 ### Requirement: Detect staff systems on a rendered page
 
-The system SHALL detect grand-staff systems on a rendered score page by computing a
-horizontal projection profile of the page bitmap, identifying staff lines as profile
-peaks, grouping five consecutive equally-spaced lines into a staff, and pairing
-consecutive staves into two-staff systems. Systems SHALL be grouped by staff-line
-structure (which staves belong together), NOT by detecting a horizontal whitespace gap
-between systems. Each detected system SHALL be reported as a bounding box in full-page
+The system SHALL detect grand-staff systems on a rendered score page by deskewing the
+page, computing a horizontal projection profile of the page bitmap, identifying staff
+lines as profile peaks, grouping five consecutive equally-spaced lines into a staff, and
+grouping consecutive staves into systems by the barline/brace connector that spans the
+inter-staff gap (a system is one, two, or more staves so joined). Systems SHALL be grouped
+by staff-line structure (which staves are connected), NOT by inter-staff spacing and NOT by
+detecting a horizontal whitespace gap between systems. Each detected system SHALL be
+reported as a bounding box in full-page
 canvas coordinates — the same coordinate space that `page_dimensions` reports — with
 `top`, `bottom`, `left`, and `right` in pixels.
 

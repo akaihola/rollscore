@@ -1,16 +1,16 @@
 ## 1. Detection spike (validate the approach)
 
-- [ ] 1.1 Add `numpy` to project dependencies; confirm pymupdf/PIL render path is reusable for detection
-- [ ] 1.2 Prototype the projection profile on La Maja renders: horizontal black-pixel histogram per page, plot/inspect peaks
-- [ ] 1.3 Validate peak-pick → 5-line staff grouping → interline estimate on a clean page and on a tricky unclear-spacing page
-- [ ] 1.4 Decide binarization threshold (fixed vs Otsu/adaptive) and record the choice; note whether stable-paths escalation is needed (Open Question)
+- [x] 1.1 Add `numpy` to project dependencies; confirm pymupdf/PIL render path is reusable for detection
+- [x] 1.2 Prototype the projection profile on La Maja renders: horizontal black-pixel histogram per page, plot/inspect peaks
+- [x] 1.3 Validate peak-pick → 5-line staff grouping → interline estimate on a clean page and on a tricky unclear-spacing page
+- [x] 1.4 Decide binarization threshold (fixed vs Otsu/adaptive) and record the choice; note whether stable-paths escalation is needed (Open Question) — DECIDED: fixed `gray<160`; line threshold `0.6*page-max`; gap-cluster staves into systems (handles La Maja's 3-staff systems from rich piano texture on pp.4-5); stable-paths NOT needed
 
 ## 2. Backend detection module
 
-- [ ] 2.1 Create `gazescroll/systems.py` with pure functions: binarize → projection profile → detect staff lines → group staves → pair into systems. Group by staff-line structure (intra- vs inter-system gap), NOT by a horizontal whitespace cut
-- [ ] 2.2 Emit system boxes as `{top, bottom, left, right}` in full-page canvas coordinates (same space as `page_dimensions`), ordered top-to-bottom by staff-pair center, with ledger-line margin; allow consecutive boxes to overlap vertically (never merge/clip on overlap)
-- [ ] 2.3 Implement robust degradation: return empty list when <2 lines or no groupable staff; surface an unpaired staff as a single-staff system; never raise
-- [ ] 2.4 Add `detect_cached(root, score_file, page)` reusing `ingest._cache_dir()` under `systems/{mtime_token}/{slug}/{page}.json`; reuse the cached render as input
+- [x] 2.1 Create `gazescroll/systems.py` with pure functions: binarize → projection profile → detect staff lines → group staves → pair into systems. Group by staff-line structure (barline/brace connector, NOT spacing or whitespace cut). Added a deskew step (page 1 was tilted ~0.6°)
+- [x] 2.2 Emit system boxes as `{top, bottom, left, right}` in full-page canvas coordinates; vertical span follows real content via a jagged per-column divide (`_split_gap`), so consecutive boxes overlap where notes interleave and barely touch where a blank row separates them — validated against user ground truth on all 6 La Maja pages
+- [x] 2.3 Implement robust degradation: return empty list when <2 lines or no groupable staff; surface an unpaired staff as a single-staff system; never raise
+- [x] 2.4 Add `detect_cached(root, score_file, page)` reusing `ingest._cache_dir()` under `systems/{mtime_token}/{slug}/{page}.json`; reuse the cached render as input
 
 ## 3. Systems API endpoint
 
