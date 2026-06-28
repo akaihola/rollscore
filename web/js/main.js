@@ -398,12 +398,6 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   }
 
   function frame() {
-    if (!paused && latestSample && !document.fullscreenElement) {
-      // Fullscreen gate: gaze-driven scrolling only runs in fullscreen.
-      gazeDots.hide();
-      rafId = requestAnimationFrame(frame);
-      return;
-    }
     if (!paused && latestSample) {
       const rect = scroller.getBoundingClientRect();
       const x = latestSample.x - rect.left;
@@ -433,6 +427,8 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
         view
       );
 
+      // Fullscreen gate: dots always visible (helps calibration); scrolling only in fullscreen.
+      const inFullscreen = !!document.fullscreenElement;
       let handled = false;
       if (flat.length) {
         const colX0 = tuning.columnX0 * rect.width;
@@ -444,7 +440,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           { columnX0: colX0, columnX1: colX1, minConfidence: tuning.minConfidence }
         );
         const res = sysController.update({ boxes: flat, fx, reading, ...view });
-        if (res) {
+        if (res && inFullscreen) {
           scroller.scrollTop = res.scrollTop;
           lastAppliedScroll = scroller.scrollTop;
           if (overlayOn) {
@@ -454,7 +450,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           handled = true;
         }
       }
-      if (!handled) {
+      if (!handled && inFullscreen) {
         scroller.scrollTop = vertScrollTop;
         lastAppliedScroll = scroller.scrollTop;
         if (overlayOn) overlay.setActive(null, null); // fallback shows no box
