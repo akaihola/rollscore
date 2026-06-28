@@ -201,10 +201,29 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     }));
   }
 
+  // The whole score as one continuous top→bottom stack of systems (strip coords,
+  // already offset per page), each tagged with its `page`/`idx` for the overlay.
+  // This is what the system controller reads, so the active system advances across
+  // a page boundary instead of stalling at the last system of the current page.
+  function allStripBoxes(w) {
+    const out = [];
+    for (let p = 1; p <= extDims.length; p++) {
+      pageStripBoxes(p, w).forEach((b, idx) => out.push({ ...b, page: p - 1, idx }));
+    }
+    return out;
+  }
+
+  // First system not yet scrolled past — used to re-seat the forward-only selector
+  // after an external scroll (resume, manual nudge/jump, wheel/touch).
+  function activeAtScroll(flat, scrollTop) {
+    for (let i = 0; i < flat.length; i++) if (flat[i].bottom > scrollTop + 1) return i;
+    return Math.max(0, flat.length - 1);
+  }
+
   const sysController = createSystemController(
     controllerParams(tuning, scroller.getBoundingClientRect())
   );
-  let sysPage = null; // last page the selector was seated on (reset on page change)
+  let lastAppliedScroll = null; // scrollTop the controller last set (detects manual scroll)
 
   // The overlay positions boxes in page-relative % (resize-independent) and nests
   // them per page so they inherit the crop transform; pass raw canvas boxes + dims.
@@ -305,19 +324,20 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
         contentH: scroller.scrollHeight,
       };
 
-      // System-aware path for pages that have detected systems; the vertical-gaze
-      // follower is the per-page fallback (design D5). Selection re-seats to the
-      // first system whenever the gaze crosses into a new page.
+      // System-aware path over the whole score as one continuous stack of systems,
+      // so the active system advances across page boundaries; the vertical-gaze
+      // follower is the fallback when the score has no detected systems (design D5).
       const w = stripWidth();
-      const pageNum = scrollToResume(extDims, w, scroller.scrollTop).page;
-      const pageBoxes = pageStripBoxes(pageNum, w);
-      if (pageNum !== sysPage) {
-        sysController.reset(0);
-        sysPage = pageNum;
+      const flat = allStripBoxes(w);
+
+      // After an external scroll (resume, manual nudge/jump, wheel/touch) re-seat
+      // the forward-only selector to the system we're actually at.
+      if (lastAppliedScroll === null || Math.abs(scroller.scrollTop - lastAppliedScroll) > 1) {
+        sysController.reset(activeAtScroll(flat, scroller.scrollTop));
       }
 
       let handled = false;
-      if (pageBoxes.length) {
+      if (flat.length) {
         const colX0 = tuning.columnX0 * rect.width;
         const colX1 = tuning.columnX1 * rect.width;
         const fx =
@@ -326,10 +346,14 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           { x, confidence: latestSample.confidence },
           { columnX0: colX0, columnX1: colX1, minConfidence: tuning.minConfidence }
         );
-        const res = sysController.update({ boxes: pageBoxes, fx, reading, ...view });
+        const res = sysController.update({ boxes: flat, fx, reading, ...view });
         if (res) {
           scroller.scrollTop = res.scrollTop;
-          if (overlayOn) overlay.setActive(pageNum - 1, res.active);
+          lastAppliedScroll = scroller.scrollTop;
+          if (overlayOn) {
+            const b = flat[res.active];
+            overlay.setActive(b ? b.page : null, b ? b.idx : null);
+          }
           handled = true;
         }
       }
@@ -338,6 +362,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           { t: latestSample.t, x, y, confidence: latestSample.confidence },
           view
         );
+        lastAppliedScroll = scroller.scrollTop;
         if (overlayOn) overlay.setActive(null, null); // fallback shows no box
       }
       maybeSetlistEnd();
