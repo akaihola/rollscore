@@ -37,5 +37,15 @@ metadata:
 
 **Priority**: Post-MVP (not blocking functional acceptance). Pull forward only if current basic tuning can't achieve "acceptable" UX. Can be deferred to Phase 15 if Phase 13.2 user testing shows acceptable-enough behavior with parameter tuning alone.
 
+## Phase 14 progress — detection backend DONE (2026-06-28)
+
+Branch `phase-14-detection` (commit 173fbfa, **not yet merged to main** — merge `--no-ff` when ready). Tasks §1–2 complete.
+
+- `gazescroll/systems.py`: detector validated against ground truth on all 6 La Maja pages. Pipeline: binarize `gray<160` → **deskew** (variance angle search; p1 tilted ~0.6°) → projection profile (`0.6×page-max`) → 5±1-line staves → **group by barline/brace connector** (NOT spacing — title-page spacing is non-bimodal) → box vertical span = **jagged per-column content divide** (boxes overlap where notes interleave). numpy added.
+- La Maja is NOT a song: 2-staff on most pages, **3-staff from rich piano texture** on pp.4–5, mixed 3/2-staff on p5. Stable-paths NOT needed.
+- Full hypothesis/failure-mode/findings log: `docs/notes/staff-system-detection-spike.md`. Far-future refinement noted there: extend boxes to stems/beams/slurs.
+
+**Next (new session): Phase 3** — `GET /api/score/{file}/systems` endpoint + `web/js/api.js` client; then Phase 4 backend tests (golden box, degradation, cache, API 404/503), Phases 5–6b frontend system-aware controller + debug overlay, Phase 7 frontend tests, Phase 8 acceptance. Resume with `/opsx:apply openspec/changes/phase-14-music-aware-scrolling/`.
+
 ## Tooling
 **OpenSpec adopted** (2026-06-27) for spec-driven design. Use `/opsx:propose <change>` for Phase 14+.
