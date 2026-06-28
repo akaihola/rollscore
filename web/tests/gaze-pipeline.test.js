@@ -22,7 +22,7 @@ function runTrace(samples, params = PARAMS) {
   let scrollTop = 0;
   const series = [];
   for (const s of samples) {
-    scrollTop = ctl.update(s, { ...VIEW, scrollTop });
+    ({ scrollTop } = ctl.update(s, { ...VIEW, scrollTop }));
     series.push(scrollTop);
   }
   return series;
@@ -91,12 +91,12 @@ describe("createGazeController pipeline", () => {
     let scrollTop = 0;
     // First 20 frames at the default step cap, then clamp it down to 1px/frame.
     for (let i = 0; i < 20; i++) {
-      scrollTop = ctl.update(samples[i], { ...VIEW, scrollTop });
+      ({ scrollTop } = ctl.update(samples[i], { ...VIEW, scrollTop }));
     }
     ctl.setParams({ maxStepPerFrame: 1 });
     let prev = scrollTop;
     for (let i = 20; i < 40; i++) {
-      scrollTop = ctl.update(samples[i], { ...VIEW, scrollTop });
+      ({ scrollTop } = ctl.update(samples[i], { ...VIEW, scrollTop }));
       expect(scrollTop - prev).toBeLessThanOrEqual(1 + 1e-9); // new cap honoured live
       prev = scrollTop;
     }
@@ -106,7 +106,7 @@ describe("createGazeController pipeline", () => {
     const ctl = createGazeController({ ...PARAMS });
     // Should not throw and should keep producing valid scroll output afterwards.
     ctl.setParams({ medianWindow: 1, alpha: 1 });
-    const out = ctl.update(
+    const { scrollTop: out } = ctl.update(
       { t: 0, x: 500, y: 500, confidence: 0.9 },
       { ...VIEW, scrollTop: 0 }
     );

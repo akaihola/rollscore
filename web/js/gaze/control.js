@@ -296,7 +296,9 @@ export function createGazeController(initialParams) {
         params,
       });
       ctrlState = out.state;
-      return out.scrollTop;
+      // Expose smoothedY and raw coords so callers can drive a dual-dot visualization
+      // without re-running the smoother (dual-gaze-dots change).
+      return { scrollTop: out.scrollTop, smoothedY, rawX: sample.x, rawY: sample.y };
     },
   };
 }

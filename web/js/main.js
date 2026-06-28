@@ -37,7 +37,7 @@ import {
   pieceJumpPage,
 } from "./reader.js";
 import { createGazeController, createSystemController, isReading } from "./gaze/control.js";
-import { createSystemOverlay } from "./gaze/overlay.js";
+import { createGazeDots, createSystemOverlay } from "./gaze/overlay.js";
 import { WebGazerGazeSource } from "./gaze/webgazer-source.js";
 import {
   applyRecenter,
@@ -241,6 +241,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     opacity: tuning.overlayOpacity,
     fadeMs: tuning.overlayFadeMs,
   });
+  const gazeDots = createGazeDots();
   let overlayOn = false;
   applyCropMode(strip, extDims, cropMode); // re-apply now the overlay containers exist
 
@@ -343,6 +344,13 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
         sysController.reset(activeAtScroll(flat, scroller.scrollTop));
       }
 
+      // Always run the vertical controller to get smoothedY for the gaze dot,
+      // even when the system path handles scrolling (only its scrollTop is skipped).
+      const { scrollTop: vertScrollTop, smoothedY } = controller.update(
+        { t: latestSample.t, x, y, confidence: latestSample.confidence },
+        view
+      );
+
       let handled = false;
       if (flat.length) {
         const colX0 = tuning.columnX0 * rect.width;
@@ -365,14 +373,21 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
         }
       }
       if (!handled) {
-        scroller.scrollTop = controller.update(
-          { t: latestSample.t, x, y, confidence: latestSample.confidence },
-          view
-        );
+        scroller.scrollTop = vertScrollTop;
         lastAppliedScroll = scroller.scrollTop;
         if (overlayOn) overlay.setActive(null, null); // fallback shows no box
       }
+
+      // Dual gaze dots: gray = raw WebGazer (viewport coords), red = control path
+      // (raw x, smoothedY — exactly what the scroll controller receives).
+      gazeDots.update(
+        latestSample.x, latestSample.y,
+        latestSample.x, rect.top + smoothedY,
+      );
+
       maybeSetlistEnd();
+    } else {
+      gazeDots.hide();
     }
     rafId = requestAnimationFrame(frame);
   }
@@ -525,6 +540,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     calibration?.cancel(); // leaving for the library removes any open cal dots
     tuningPanel.remove();
     overlay.remove();
+    gazeDots.remove();
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("beforeunload", flush);
   };

@@ -1,4 +1,51 @@
 /**
+ * Dual gaze-point overlay: red dot for the control path (raw x, smoothed y),
+ * gray dot for the raw WebGazer output. Both are fixed-position viewport divs.
+ * The red dot shows exactly what the scroll controller receives; the gray dot
+ * shows the unfiltered WebGazer signal so the smoothing effect is visible.
+ *
+ * Centered via transform:translate(-50%,-50%) so left/top point to the gaze center.
+ */
+export function createGazeDots() {
+  function dot(size, color, opacity) {
+    const d = document.createElement("div");
+    Object.assign(d.style, {
+      position: "fixed",
+      width: `${size}px`,
+      height: `${size}px`,
+      borderRadius: "50%",
+      background: color,
+      opacity: String(opacity),
+      transform: "translate(-50%, -50%)",
+      pointerEvents: "none",
+      zIndex: "900",
+      display: "none",
+    });
+    document.body.append(d);
+    return d;
+  }
+
+  const ctrlDot = dot(20, "#d00", 1.0); // red, full opacity — rendered first (below)
+  const rawDot  = dot(10, "#999", 0.6); // gray, 50% of ctrl size, 60% opacity — on top
+
+  return {
+    update(rawX, rawY, ctrlX, ctrlY) {
+      rawDot.style.left  = `${rawX}px`;
+      rawDot.style.top   = `${rawY}px`;
+      rawDot.style.display = "";
+      ctrlDot.style.left = `${ctrlX}px`;
+      ctrlDot.style.top  = `${ctrlY}px`;
+      ctrlDot.style.display = "";
+    },
+    hide() {
+      rawDot.style.display  = "none";
+      ctrlDot.style.display = "none";
+    },
+    remove() { rawDot.remove(); ctrlDot.remove(); },
+  };
+}
+
+/**
  * Debug overlay for the system-aware controller (Phase 14, design D7).
  *
  * Renders the detected system boxes as faint shading rectangles drawn *over* the

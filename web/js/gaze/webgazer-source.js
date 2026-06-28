@@ -50,6 +50,9 @@ export class WebGazerGazeSource {
       this._cb({ x: data.x, y: data.y, confidence: this._confidence, t });
     });
     return wg.begin().then(() => {
+      // Hide WebGazer's built-in prediction dot — we render our own dual dots
+      // (raw + control-path) via createGazeDots() in the frame loop.
+      wg.showPredictionPoints(false);
       // WebGazer treats every mouse move/click as ground truth and retrains the
       // regression on the cursor. That makes an *idle* gaze snap back to the last
       // cursor/click position instead of following the eyes. Drop the listeners
