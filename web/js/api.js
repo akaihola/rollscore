@@ -63,12 +63,12 @@ export function putTuning(params) {
   return putJson("/api/tuning", params);
 }
 
-/** Fetch the saved WebGazer calibration blob (or null). */
-export function getCalibration() {
-  return getJson("/api/calibration");
+/** Fetch the saved calibration entry {blob, dpr} for the given orientation (or null). */
+export function getCalibration(orientation = "landscape") {
+  return getJson(`/api/calibration?orientation=${encodeURIComponent(orientation)}`);
 }
 
-/** Persist the WebGazer calibration blob. */
-export function putCalibration(blob) {
-  return putJson("/api/calibration", blob);
+/** Persist a calibration entry {blob, dpr} for the given orientation. */
+export function putCalibration(entry, orientation = "landscape") {
+  return putJson(`/api/calibration?orientation=${encodeURIComponent(orientation)}`, entry);
 }

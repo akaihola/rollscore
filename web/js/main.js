@@ -43,6 +43,9 @@ import {
   applyRecenter,
   computeRecenterOffset,
   runCalibration,
+  serializeCalibration,
+  currentOrientation,
+  isCalibrationValidForScale,
 } from "./gaze/calibration.js";
 import { bindControls } from "./controls.js";
 import { buildTuningPanel } from "./tuning.js";
@@ -152,13 +155,14 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   root.append(bar, scroller);
   app.replaceChildren(root);
 
+  let currentOrient = currentOrientation();
   let extDims, resume, tuning, savedCal;
   try {
     [extDims, resume, tuning, savedCal] = await Promise.all([
       getPages(file),
       getResume(file),
       getTuning(),
-      getCalibration().catch(() => null),
+      getCalibration(currentOrient).catch(() => null),
     ]);
   } catch (err) {
     showError(`Could not open ${file}: ${err.message}`);
@@ -253,6 +257,75 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   let rafId = null;
   let nextAffordance = null; // the setlist "next is …" banner, when shown
   let calibration = null; // active runCalibration handle (its dots), or null
+  let dprQuery = null; // matchMedia listener for zoom guard
+  let pausedForZoom = false; // true when gaze was paused by a zoom change
+
+  function onDprChange() {
+    if (dprQuery && !dprQuery.matches) {
+      if (!paused) {
+        setPaused(true);
+        pausedForZoom = true;
+        status.textContent = "Browser zoom changed — reset zoom (Ctrl+0) to resume gaze";
+      }
+    } else if (pausedForZoom) {
+      pausedForZoom = false;
+      setPaused(false);
+      status.textContent = "Zoom restored — gaze resumed";
+    }
+  }
+
+  function bindDprGuard(entry) {
+    dprQuery?.removeEventListener("change", onDprChange);
+    dprQuery = null;
+    if (!entry?.dpr) return;
+    dprQuery = matchMedia(`(resolution: ${entry.dpr}dppx)`);
+    dprQuery.addEventListener("change", onDprChange);
+  }
+
+  function applyCalibrationEntry(entry) {
+    if (!entry) return;
+    if (!isCalibrationValidForScale(entry, window.devicePixelRatio)) {
+      status.textContent = "Saved calibration trained at different zoom — reset zoom (Ctrl+0) or recalibrate";
+      return;
+    }
+    source?.setCalibration?.(entry.blob);
+    bindDprGuard(entry);
+  }
+
+  function flushCalibration() {
+    const entry = serializeCalibration();
+    if (entry) putCalibration(entry, currentOrient).catch(() => {});
+  }
+
+  function onFullscreenChange() {
+    if (!document.fullscreenElement && !paused) {
+      setPaused(true);
+      status.textContent = "Fullscreen exited — gaze paused";
+    }
+  }
+
+  async function onOrientationChange() {
+    flushCalibration();
+    currentOrient = currentOrientation();
+    bindDprGuard(null);
+    try {
+      const entry = await getCalibration(currentOrient);
+      if (entry) {
+        applyCalibrationEntry(entry);
+        if (source && isCalibrationValidForScale(entry, window.devicePixelRatio)) {
+          status.textContent = `Orientation changed — ${currentOrient} calibration restored`;
+        }
+      } else {
+        setPaused(true);
+        status.textContent = `No calibration for ${currentOrient} — press c to calibrate`;
+      }
+    } catch {
+      // ignore API error on orientation swap
+    }
+  }
+
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+  window.addEventListener("orientationchange", onOrientationChange);
 
   // ---- Dev tuning panel (hidden; toggled with `t`) ------------------------
   // Sliders edit `tuning` live: most params feed straight into the controller;
@@ -287,6 +360,12 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   function setPaused(p) {
     paused = p;
     gazeBtn.textContent = `Gaze: ${p ? "off" : "on"}`;
+    if (!p && !document.fullscreenElement) {
+      // Use documentElement so body-appended overlays (dots, cal-dots, video) stay visible.
+      document.documentElement.requestFullscreen?.().catch(() => {
+        status.textContent = "Fullscreen unavailable — gaze may be inaccurate";
+      });
+    }
   }
 
   function clearAffordance() {
@@ -349,6 +428,8 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
         view
       );
 
+      // Fullscreen gate: dots always visible (helps calibration); scrolling only in fullscreen.
+      const inFullscreen = !!document.fullscreenElement;
       let handled = false;
       if (flat.length) {
         const colX0 = tuning.columnX0 * rect.width;
@@ -360,7 +441,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           { columnX0: colX0, columnX1: colX1, minConfidence: tuning.minConfidence }
         );
         const res = sysController.update({ boxes: flat, fx, reading, ...view });
-        if (res) {
+        if (res && inFullscreen) {
           scroller.scrollTop = res.scrollTop;
           lastAppliedScroll = scroller.scrollTop;
           if (overlayOn) {
@@ -370,7 +451,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
           handled = true;
         }
       }
-      if (!handled) {
+      if (!handled && inFullscreen) {
         scroller.scrollTop = vertScrollTop;
         lastAppliedScroll = scroller.scrollTop;
         if (overlayOn) overlay.setActive(null, null); // fallback shows no box
@@ -403,7 +484,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
       latestSample = s;
     });
     await source.start();
-    source.setCalibration?.(savedCal);
+    applyCalibrationEntry(savedCal); // Task 6.1: restore for current orientation
     // WebGazer's camera preview is fixed at the top-left and would cover the
     // toolbar buttons; drop it just below the toolbar.
     const videoBox = document.getElementById("webgazerVideoContainer");
@@ -435,8 +516,8 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     const wg = window.webgazer;
     if (!wg?.recordScreenPosition) return;
     wg.recordScreenPosition(x, y, "click");
-    const blob = source?.getCalibration();
-    if (blob) putCalibration(blob).catch(() => {});
+    const entry = serializeCalibration();
+    if (entry) putCalibration(entry, currentOrient).catch(() => {});
     status.textContent = "calibration point added — press g at the cursor or Shift+click where you look";
   }
 
@@ -466,8 +547,9 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     const completed = await handle;
     if (calibration === handle) calibration = null; // only the live one clears state
     if (completed) {
-      const blob = source?.getCalibration();
-      if (blob) putCalibration(blob).catch(() => {});
+      const entry = serializeCalibration();
+      if (entry) putCalibration(entry, currentOrient).catch(() => {});
+      bindDprGuard(entry);
       status.textContent = "Calibrated";
     }
   }
@@ -532,8 +614,10 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   teardown = () => {
     save.flush();
     flushTuning.flush();
-    const calBlob = source?.getCalibration?.();
-    if (calBlob) putCalibration(calBlob).catch(() => {});
+    flushCalibration(); // Task 6.4: flush under current orientation
+    dprQuery?.removeEventListener("change", onDprChange);
+    document.removeEventListener("fullscreenchange", onFullscreenChange);
+    window.removeEventListener("orientationchange", onOrientationChange);
     cancelAnimationFrame(rafId);
     source?.stop();
     unbind();

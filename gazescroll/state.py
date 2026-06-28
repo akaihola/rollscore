@@ -77,9 +77,28 @@ class StateStore:
         self._save()
 
     # --- calibration ------------------------------------------------------
-    def get_calibration(self) -> Any | None:
-        return self._data.get("calibration")
+    # Stored shape: {"landscape": {"blob": <any>, "dpr": <float|null>}, ...}
+    # Legacy migration: a single raw blob is wrapped as the landscape entry.
+    _ORIENTATIONS = frozenset({"landscape", "portrait"})
 
-    def set_calibration(self, blob: Any) -> None:
-        self._data["calibration"] = blob
+    def _migrate_calibration(self, raw: Any) -> dict[str, Any]:
+        if isinstance(raw, dict) and set(raw.keys()) <= self._ORIENTATIONS:
+            return raw
+        return {"landscape": {"blob": raw, "dpr": None}}
+
+    def get_calibration(self, orientation: str) -> Any | None:
+        raw = self._data.get("calibration")
+        if raw is None:
+            return None
+        cal = self._migrate_calibration(raw)
+        if cal is not raw:
+            self._data["calibration"] = cal
+            self._save()
+        return cal.get(orientation)
+
+    def set_calibration(self, orientation: str, entry: Any) -> None:
+        raw = self._data.get("calibration")
+        cal = self._migrate_calibration(raw) if raw is not None else {}
+        cal[orientation] = entry
+        self._data["calibration"] = cal
         self._save()

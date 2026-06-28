@@ -6,6 +6,8 @@ import {
   runCalibration,
   serializeCalibration,
   restoreCalibration,
+  currentOrientation,
+  isCalibrationValidForScale,
 } from "../js/gaze/calibration.js";
 
 function makeReg(data) {
@@ -95,22 +97,65 @@ describe("runCalibration", () => {
   });
 });
 
+// Task 7.1: currentOrientation
+describe("currentOrientation", () => {
+  it("returns portrait when matchMedia matches portrait", () => {
+    const fakeMatcher = (q) => ({ matches: q === "(orientation: portrait)" });
+    expect(currentOrientation(fakeMatcher)).toBe("portrait");
+  });
+
+  it("returns landscape when matchMedia does not match portrait", () => {
+    const fakeMatcher = () => ({ matches: false });
+    expect(currentOrientation(fakeMatcher)).toBe("landscape");
+  });
+
+  it("defaults to landscape when matchMedia is unavailable", () => {
+    expect(currentOrientation(null)).toBe("landscape");
+  });
+});
+
+// Task 7.3: isCalibrationValidForScale
+describe("isCalibrationValidForScale", () => {
+  it("returns true when entry dpr matches current dpr", () => {
+    expect(isCalibrationValidForScale({ blob: [], dpr: 2 }, 2)).toBe(true);
+  });
+
+  it("returns false on dpr mismatch", () => {
+    expect(isCalibrationValidForScale({ blob: [], dpr: 1 }, 2)).toBe(false);
+  });
+
+  it("returns false when entry dpr is null (legacy / unknown scale)", () => {
+    expect(isCalibrationValidForScale({ blob: [], dpr: null }, 1)).toBe(false);
+  });
+
+  it("returns false for null entry", () => {
+    expect(isCalibrationValidForScale(null, 1)).toBe(false);
+  });
+});
+
 // Real getData() shape: array of {eyes, screenPos, type} objects (empty = [])
 const FAKE_POINT = { eyes: {}, screenPos: [400, 300], type: "click" };
 
 describe("serializeCalibration", () => {
-  it("returns getData() blob for a non-empty model", () => {
+  it("returns {blob, dpr} for a non-empty model", () => {
     const blob = [FAKE_POINT];
     const reg = makeReg(blob);
-    expect(serializeCalibration(reg)).toBe(blob);
+    const result = serializeCalibration(reg, 2);
+    expect(result).toEqual({ blob, dpr: 2 });
+    expect(result.blob).toBe(blob); // same reference
+  });
+
+  it("includes dpr in the returned entry", () => {
+    const reg = makeReg([FAKE_POINT]);
+    expect(serializeCalibration(reg, 1.5)).toMatchObject({ dpr: 1.5 });
   });
 
   it("returns null when getData() has no points (empty array)", () => {
-    expect(serializeCalibration(makeReg([]))).toBeNull();
+    expect(serializeCalibration(makeReg([]), 1)).toBeNull();
   });
 
   it("returns null when regression is missing", () => {
-    expect(serializeCalibration(undefined)).toBeNull();
+    expect(serializeCalibration(undefined, 1)).toBeNull();
   });
 });
 
@@ -132,7 +177,26 @@ describe("restoreCalibration", () => {
     const blob = [FAKE_POINT];
     const regA = makeReg(blob);
     const regB = makeReg([]);
-    restoreCalibration(serializeCalibration(regA), regB);
+    restoreCalibration(serializeCalibration(regA, 1).blob, regB);
     expect(regB.setData).toHaveBeenCalledWith(blob);
+  });
+});
+
+// Task 7.4: orientation-keyed round-trip
+describe("orientation-keyed calibration round-trip", () => {
+  it("a saved landscape entry restores into landscape and not portrait", () => {
+    const landBlob = [FAKE_POINT];
+    const landReg = makeReg(landBlob);
+    const entry = serializeCalibration(landReg, 1);
+    // Simulate what the backend returns per orientation:
+    const store = { landscape: entry, portrait: null };
+
+    // Restoring landscape puts data in the target regression.
+    const reg = makeReg([]);
+    restoreCalibration(store.landscape.blob, reg);
+    expect(reg.setData).toHaveBeenCalledWith(landBlob);
+
+    // Portrait slot is null — no data to restore.
+    expect(store.portrait).toBeNull();
   });
 });
