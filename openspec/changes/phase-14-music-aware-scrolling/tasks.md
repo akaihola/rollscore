@@ -54,6 +54,6 @@
 
 ## 8. Acceptance & docs
 
-- [ ] 8.1 Manual run against La Maja: turn on the debug overlay to confirm boxes register and the crossfade tracks gaze shifts; verify snap + interpolation feel predictable; tune params — **needs the user (webcam run); press `o` to toggle the overlay**
+- [x] 8.1 Manual run against La Maja: turn on the debug overlay to confirm boxes register and the crossfade tracks gaze shifts; verify snap + interpolation feel predictable; tune params — **DONE (webcam run, user-confirmed "good")**. Three bugs found & fixed during the run: overlay invisible (z-index behind opaque renders) + no toggle feedback (commit 8a191c8); overlay misaligned under crop (now nested per-page, inherits the crop transform — 8a191c8); system tracking stalled at the last system of page 1 (now one continuous cross-page stack — commit 65e01b3, verified p1→p2→p3 live). Two minor bugs deferred to a follow-up session.
 - [x] 8.2 Resolve/record Open Questions (stable-paths need, overlap extent + advance-rule sufficiency, crossfade duration/opacity, music-column extent source) — recorded in design.md
 - [x] 8.3 Update Phase 14 status in project docs/backlog and memory
