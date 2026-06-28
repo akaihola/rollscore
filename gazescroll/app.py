@@ -148,5 +148,5 @@ def create_app(
         return FileResponse(WEB_DIR / "index.html")
 
     # Static front-end (js/, vendor/, spike/). Mounted last so API routes win.
-    app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
+    app.mount("/web", StaticFiles(directory=WEB_DIR, follow_symlink=True), name="web")
     return app

@@ -225,24 +225,70 @@ describe("createSystemController", () => {
   const view = { viewportH: 600, scrollTop: 0, contentH: 5000 };
 
   it("returns null when there are no boxes (caller uses the vertical follower)", () => {
-    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8 });
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
     expect(c.update({ boxes: [], fx: 0.5, reading: true, ...view })).toBeNull();
     expect(c.update({ boxes: undefined, fx: 0.5, reading: true, ...view })).toBeNull();
   });
 
-  it("holds position and does not advance while not reading", () => {
-    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8 });
+  it("holds position and does not advance while not reading (already-visible system → ungated snap takes no step)", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
     const r = c.update({ boxes, fx: 0.1, reading: false, ...view, scrollTop: 250 });
     expect(r.scrollTop).toBe(250);
     expect(r.active).toBe(0);
   });
 
   it("advances the active system on a sweep-and-return and steps forward only", () => {
-    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 100000 });
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 100000, snapStepPerFrame: 50 });
     const r0 = c.update({ boxes, fx: 0.9, reading: true, ...view });
     expect(r0.active).toBe(0);
     const r1 = c.update({ boxes, fx: 0.1, reading: true, ...view });
     expect(r1.active).toBe(1);
     expect(r1.scrollTop).toBeGreaterThanOrEqual(0);
+  });
+
+  // A next system only partially visible at the bottom: top is on-screen but the
+  // bottom is clipped, so snapStart = bottom - viewportH > 0 must be reached.
+  const clipBoxes = [{ top: 50, bottom: 300 }, { top: 550, bottom: 900 }];
+  const clipView = { viewportH: 600, scrollTop: 0, contentH: 2000 };
+  const snapStart1 = 900 - 600; // = 300
+
+  // Advance the selector to system 1 (sweep into the right portion, return left).
+  const advanceToSystem1 = (c) => {
+    c.update({ boxes: clipBoxes, fx: 0.9, reading: true, ...clipView });
+    return c.update({ boxes: clipBoxes, fx: 0.1, reading: true, ...clipView, scrollTop: 0 });
+  };
+
+  it("snaps a partially-visible advanced system fully into view within a few frames at the snap budget", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
+    const r1 = advanceToSystem1(c);
+    expect(r1.active).toBe(1);
+
+    let scrollTop = r1.scrollTop;
+    let frames = 0;
+    while (scrollTop < snapStart1 && frames < 50) {
+      // Gaze at the left edge of the column (fx 0): only the snap drives motion.
+      scrollTop = c.update({ boxes: clipBoxes, fx: 0, reading: true, ...clipView, scrollTop }).scrollTop;
+      frames++;
+    }
+    expect(scrollTop).toBeGreaterThanOrEqual(snapStart1);
+    // The 50px snap budget frames it in a handful; the 8px reading cap would need ~30+.
+    expect(frames).toBeLessThanOrEqual(8);
+  });
+
+  it("snap reaches snapStart even when reading is false on the following frames (freeze regression)", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
+    const r1 = advanceToSystem1(c);
+    expect(r1.active).toBe(1);
+
+    // Gaze now rests in the left margin (left of the column): reading is false on
+    // every later frame, yet the clipped system must still be pulled into view.
+    let scrollTop = r1.scrollTop;
+    for (let i = 0; i < 20 && scrollTop < snapStart1; i++) {
+      const r = c.update({ boxes: clipBoxes, fx: 0, reading: false, ...clipView, scrollTop });
+      expect(r.scrollTop - scrollTop).toBeLessThanOrEqual(50 + 1e-9); // bounded by snap budget
+      expect(r.scrollTop).toBeGreaterThanOrEqual(scrollTop); // forward-only
+      scrollTop = r.scrollTop;
+    }
+    expect(scrollTop).toBe(snapStart1);
   });
 });

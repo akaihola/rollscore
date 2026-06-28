@@ -34,6 +34,7 @@ TUNING_DEFAULTS: dict[str, float] = {
     "minConfidence": 0.5,   # gaze-confidence gate for the on-music check
     # Phase 14 system-aware scrolling + debug overlay
     "systemTopMargin": 24.0,  # px above the active system at the sweep-end target
+    "snapStepPerFrame": 50.0, # px/frame snap budget to bring the active system fully into view
     "overlayFadeMs": 250.0,   # active-system overlay crossfade duration
     "overlayOpacity": 0.18,   # active-system overlay shading opacity
 }

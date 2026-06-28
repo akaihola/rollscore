@@ -38,6 +38,7 @@ describe("buildTuningPanel", () => {
       "columnX1",
       "minConfidence",
       "systemTopMargin",
+      "snapStepPerFrame",
       "overlayFadeMs",
       "overlayOpacity",
     ];
@@ -94,6 +95,7 @@ describe("buildTuningPanel", () => {
       "columnX1",
       "minConfidence",
       "systemTopMargin",
+      "snapStepPerFrame",
       "overlayFadeMs",
       "overlayOpacity",
     ]);
