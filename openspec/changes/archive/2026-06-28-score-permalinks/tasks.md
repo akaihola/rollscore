@@ -20,5 +20,5 @@
 
 ## 5. Verify
 
-- [ ] 5.1 Manually verify: clicking a score navigates to `/score/<file>` and opens the reader; reload reopens it; a piece link opens at `?page=<n>`; `/` shows the chooser; an unknown filename URL falls back to the chooser; Back/Forward move between chooser and reader.
+- [x] 5.1 Manually verify: clicking a score navigates to `/score/<file>` and opens the reader; reload reopens it; a piece link opens at `?page=<n>`; `/` shows the chooser; an unknown filename URL falls back to the chooser; Back/Forward move between chooser and reader.
 - [x] 5.2 Verify `GET /score/<file>` returns 200 with the shell (e.g. `curl -sI`) and that `/api/...` endpoints are unaffected.
