@@ -1,9 +1,55 @@
 import gzip
 import plistlib
+import urllib.request
+from pathlib import Path
 
 import pytest
 
 MAGIC = b"<--4SBV03-->"
+
+# --- La Maja golden fixture (public-domain, downloaded on demand) ------------
+# Granados, *Goyescas* first edition (Barcelona: Casa Dotésio, 1912), IMSLP
+# #877498 — public domain. "La Maja y el Ruiseñor" is PDF pages 39-44. The scan
+# is never committed (copyright-clean but large; see memory no-copyrighted-pdfs);
+# it is fetched on first use and cached under the gitignored tests/fixtures/.
+GOYESCAS_URL = (
+    "https://s9.imslp.org/files/imglnks/usimg/2/27/"
+    "IMSLP877498-PMLP03851-Granados-Goyescas-FE-mono.pdf"
+)
+GOYESCAS_PDF = Path(__file__).resolve().parent / "fixtures" / "goyescas-fe.pdf"
+LA_MAJA_PAGE1 = 39  # 1-based PDF page where La Maja starts
+_MIN_PDF_BYTES = 1_000_000  # real scan ~7.7 MB; reject an IMSLP HTML stub
+
+
+@pytest.fixture(scope="session")
+def goyescas_pdf() -> Path:
+    """Path to the La Maja source PDF, downloading it if missing.
+
+    IMSLP only serves the file with a ``Referer`` header; without one it returns a
+    tiny HTML stub. If the download fails (offline / sandboxed network), skip with
+    a copy-paste command so the user can place the file manually.
+    """
+    if GOYESCAS_PDF.exists() and GOYESCAS_PDF.stat().st_size >= _MIN_PDF_BYTES:
+        return GOYESCAS_PDF
+    GOYESCAS_PDF.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        req = urllib.request.Request(
+            GOYESCAS_URL, headers={"Referer": "https://imslp.org/"}
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310 (fixed https URL)
+            data = resp.read()
+        if len(data) < _MIN_PDF_BYTES:
+            raise ValueError(f"got {len(data)} bytes — not the PDF (IMSLP stub?)")
+        GOYESCAS_PDF.write_bytes(data)
+    except Exception as exc:  # network blocked, offline, etc.
+        pytest.skip(
+            "La Maja golden fixture missing and auto-download failed "
+            f"({exc}).\nIt is public-domain (Granados, Goyescas first edition, "
+            "IMSLP #877498). Download it manually (IMSLP needs the Referer):\n"
+            f"  xh --download --output {GOYESCAS_PDF} GET '{GOYESCAS_URL}' "
+            "'Referer:https://imslp.org/'\n"
+        )
+    return GOYESCAS_PDF
 
 
 def make_entry(path: str, payload: bytes, first: bool) -> bytes:

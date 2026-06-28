@@ -46,25 +46,40 @@ detecting in PDF point space via pymupdf text/drawing extraction — was rejecte
 is vector graphics with no staff-line semantics, and the bitmap projection profile is
 simpler and matches what the reader sees.
 
-### D2: Classic projection-profile pipeline, escalate only if needed
-Pipeline: binarize → horizontal projection histogram (black pixels per row) → peak-pick
-staff lines → estimate interline spacing via run-length / peak spacing → group five
-equally-spaced lines into a staff → pair consecutive staves into two-staff systems →
-emit box = vertical span of the pair plus a ledger-line margin, horizontal span = music
-column width. This is the Audiveris GRID logic minus the engine. If La Maja's tricky pages
-(unclear inter-system spacing) defeat it, escalate to the stable-paths / connected-path
-method — deferred, recorded as an open question, not built up front.
+### D2: Classic projection-profile pipeline — validated, with deskew + connector grouping
+**As built and validated on all 6 La Maja pages** (see
+`docs/notes/staff-system-detection-spike.md` for the full hypothesis/failure-mode log).
+Pipeline: binarize (`gray<160`) → **deskew** → horizontal projection histogram → peak-pick
+staff lines (≥`0.6×page-max`) → group five equally-spaced lines into a staff → group
+staves into systems **by the barline/brace connector** → emit box vertical span from the
+**jagged per-column content divide**, horizontal span = staff-line ink extent. This is the
+Audiveris GRID logic minus the engine. **Stable-paths was not needed.**
 
-**Systems are grouped by staff-line structure, not by horizontal whitespace.** The
-projection-profile peaks identify staff lines; staves are five equally-spaced peaks and a
-system is a pair of staves with the smaller (intra-system) inter-staff gap. The system
-*boundary* is therefore derived from which staves belong together, **not** from a row of
-blank pixels between systems. This matters because engravers pack systems tightly with a
-**jagged divide** to save vertical space: the tight rectangular bounding box of system *i*
-(its lowest content on one side) can overlap in rows with system *i+1* (its highest content
-on the other side). The detector MUST allow consecutive boxes to overlap vertically and
-MUST NOT split systems by cutting at a horizontal whitespace gap (there may be none). Boxes
-are still ordered top-to-bottom by their staff-pair centers.
+Two steps proved essential beyond the textbook pipeline:
+
+- **Deskew.** La Maja p1 is tilted ~0.6°, which smears thin staff lines across rows and
+  collapses the projection profile (peak coverage 0.39 vs 0.84 on level pages). A
+  variance-maximizing angle search (±1.5°, on a downscaled copy) levels the page before
+  detection; level pages are left untouched. Without it, p1 detects nothing.
+
+- **System grouping by the connector, NOT by spacing or whitespace.** The projection-profile
+  peaks identify staff lines; staves are five equally-spaced peaks. Staves of one system (a
+  grand staff) are joined by **vertical barlines spanning the inter-staff gap**; between
+  systems that gap is blank. So the system boundary is decided by whether a barline connects
+  two staves (max vertical ink-coverage in the gap ≥ 0.8), **not** by inter-staff *spacing*
+  (which is non-bimodal on the title page — pairing-by-gap failed there) and **not** by a row
+  of blank pixels. This also groups mixed N-staff pages with no per-page threshold (La Maja
+  is two-staff on most pages but **three-staff where the piano texture is rich** — pp. 4–5,
+  and p5 is a mix of 3- and 2-staff systems; it is *not* a song).
+
+Engravers pack systems tightly with a **jagged divide** to save vertical space, so the tight
+rectangular bounding box of system *i* (its lowest content on one side) can overlap in rows
+with system *i+1* (its highest content on the other side). The box vertical span therefore
+follows the **actual content** via a per-column divide anchored at the blank row nearest the
+gap's full-width valley: where a truly blank row separates two systems the boxes barely touch,
+where notes interleave the boxes **overlap** (verified on p1: 1/2 separated by 11px, 2/3 and
+3/4 overlap by 7–15px). The detector allows consecutive boxes to overlap vertically and never
+merges or clips on overlap. Boxes are ordered top-to-bottom by staff-pair center.
 
 ### D3: New `gazescroll/systems.py`, thin route, disk cache
 Detection lives in its own module (pure functions over a page image + page size), mirroring
@@ -179,17 +194,42 @@ the overlay is empty.
 
 ## Open Questions
 
-- Does the projection profile hold on La Maja's pages with unclear inter-system spacing, or
-  is stable-paths required for acceptable detection? (Resolve in the detection spike.)
-- Binarization threshold: fixed vs. Otsu/adaptive — decide during the spike against real renders.
-- Horizontal music-column extent: reuse the gaze `columnX0/columnX1` tuning, or derive it
-  per-page from the detected staff extents?
-- Top margin `m` for the sweep-end target: fixed px, fraction of viewport, or a tuning param?
-- Systems taller than the viewport (rare for solo piano): the fully-visible snap start
-  (`sysBottom − vh`) would exceed the top-aligned end (`sysTop − m`) — clamp so the sweep
-  degrades to a plain top-align rather than scrolling backward. Confirm on real renders.
-- How much do La Maja's boxes actually overlap, and is the left-edge-saccade advance rule
-  (D4) sufficient on its own, or is a minimum dwell / sweep-progress threshold needed to
-  avoid advancing on stray leftward glances? (Tune against the D7 crossfade.)
-- Crossfade duration and shading opacity for the D7 overlay: fixed defaults vs. tuning
-  params — decide once it is visible on real renders.
+**Resolved in the detection spike** (2026-06-28, `docs/notes/staff-system-detection-spike.md`):
+
+- ~~Does the projection profile hold on La Maja's unclear-spacing pages, or is stable-paths
+  required?~~ **Resolved:** projection profile + a deskew step + connector-based grouping
+  detects all 6 pages correctly. **Stable-paths not needed.**
+- ~~Binarization threshold: fixed vs Otsu/adaptive?~~ **Resolved:** fixed `gray < 160`; the
+  renders are clean black-on-white, Otsu added nothing.
+- ~~Horizontal music-column extent: gaze tuning vs per-page staff extents?~~ **Resolved:**
+  derived per-system from the detected staff-line ink extent (`_h_extent`).
+- ~~How much do La Maja's boxes actually overlap?~~ **Resolved:** measured — consecutive
+  boxes overlap by ~7–69 px where notes interleave and are separated by a few px where a
+  blank row exists (p1: 1/2 sep 11px, 2/3 ovl 7px, 3/4 ovl 15px). Overlap is real and handled.
+
+**Resolved in the frontend implementation (2026-06-28, Phase 5–7):**
+
+- ~~Top margin `m` for the sweep-end target?~~ **Resolved:** a tuning param
+  (`systemTopMargin`, default 24 px), live-editable and persisted like the rest.
+- ~~Systems taller than the viewport?~~ **Resolved:** `systemScrollTarget` detects
+  `snapStart ≥ sweepEnd` and clamps to a plain top-align (`sysTop − m`) for the whole
+  sweep, so a tall system never scrolls backward mid-sweep. Unit-tested.
+- ~~Is the left-edge-saccade advance rule sufficient on its own?~~ **Implemented as
+  saccade-only** (`createSystemSelector`: advance on `fx ≤ returnLeftFrac` only after a
+  prior `fx ≥ sweepRightFrac`); no vertical-containment input, so it is overlap-robust and
+  ignores a stray leftward glance. Whether a dwell/sweep-progress threshold is *also* needed
+  is left to the manual run (task 8.1) — the defaults (`sweepRightFrac 0.55`,
+  `returnLeftFrac 0.35`) are the starting point.
+- ~~Crossfade duration and shading opacity for the overlay?~~ **Resolved:** tuning params
+  (`overlayFadeMs` 250 ms, `overlayOpacity` 0.18).
+- ~~Music-column horizontal extent (source of `fx`)?~~ **Resolved:** reuse the existing
+  `columnX0`/`columnX1` tuning fractions — `fx` is the gaze-x position within that column.
+
+## Future refinement (far future, not in scope)
+
+Boxes currently bound the staffline-anchored content. Stems, beams, slurs, octave brackets
+and other markings can point **far** from the system (a long beam group or `8va` line well
+above the top staff). A later pass could extend each box to include such connected markings —
+e.g. connected-ink analysis attributing a marking to the system its stem roots in — for
+tighter framing of extreme cases. Low priority: current boxes already frame the music well
+(visually confirmed on all 6 pages) and the scroll logic only needs the system's bulk in view.

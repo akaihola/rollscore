@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.29",
     "pymupdf>=1.24",
     "pillow>=10",
+    "numpy>=1.26",
 ]
 
 [project.scripts]

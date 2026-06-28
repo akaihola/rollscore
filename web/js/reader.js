@@ -145,6 +145,9 @@ export function applyCropMode(strip, extDims, cropMode) {
   const wrappers = strip.querySelectorAll(".page-wrapper");
   wrappers.forEach((wrapper, i) => {
     const img = wrapper.querySelector("img.page");
+    // The debug system overlay (if present) is a container sized to the image, so
+    // the same transform keeps its boxes registered with the cropped music.
+    const overlay = wrapper.querySelector(".system-overlay");
     const { zoom = 1, trOffset = null, width, height } = extDims[i] ?? {};
     if (cropMode && (zoom !== 1 || trOffset)) {
       const [ox, oy] = trOffset ?? [0, 0];
@@ -154,12 +157,15 @@ export function applyCropMode(strip, extDims, cropMode) {
       // which in img-width-% and img-height-% gives the formulae below.
       const tx = (-80 * ox) / 612;
       const ty = (-80 * oy * width) / (612 * height);
+      const transform = `translate(${tx}%, ${ty}%) scale(${zoom})`;
       img.style.transformOrigin = "0 0";
-      img.style.transform = `translate(${tx}%, ${ty}%) scale(${zoom})`;
+      img.style.transform = transform;
+      if (overlay) overlay.style.transform = transform;
       wrapper.style.overflow = "hidden";
     } else {
       img.style.transform = "";
       img.style.transformOrigin = "";
+      if (overlay) overlay.style.transform = "";
       wrapper.style.overflow = "";
     }
   });

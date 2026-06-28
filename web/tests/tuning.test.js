@@ -37,6 +37,9 @@ describe("buildTuningPanel", () => {
       "columnX0",
       "columnX1",
       "minConfidence",
+      "systemTopMargin",
+      "overlayFadeMs",
+      "overlayOpacity",
     ];
     for (const key of keys) {
       expect(slider(panel, key), `slider for ${key}`).toBeTruthy();
@@ -90,6 +93,9 @@ describe("buildTuningPanel", () => {
       "columnX0",
       "columnX1",
       "minConfidence",
+      "systemTopMargin",
+      "overlayFadeMs",
+      "overlayOpacity",
     ]);
     for (const f of TUNING_FIELDS) {
       expect(f.min).toBeLessThan(f.max);

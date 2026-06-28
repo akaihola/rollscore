@@ -35,3 +35,6 @@ web/node_modules/
 __pycache__/
 *.pyc
 .venv/
+
+# Test fixtures downloaded on demand (public-domain scores; never committed)
+/tests/fixtures/

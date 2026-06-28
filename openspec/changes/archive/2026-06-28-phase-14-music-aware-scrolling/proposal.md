@@ -9,9 +9,10 @@ lets the reader keep a whole system in view and advance predictably, system by s
 
 ## What Changes
 
-- Add a backend staff-system detector: for a rendered page, find staff lines via a
-  horizontal projection profile, group them into 5-line staves, and pair consecutive
-  staves into 2-staff grand-staff systems, emitting a bounding box per system in
+- Add a backend staff-system detector: for a rendered page, deskew, find staff lines via a
+  horizontal projection profile, group them into 5-line staves, and group staves into
+  systems by the barline/brace connector (two-staff on most pages, more where the piano
+  texture is rich), emitting a bounding box per system in
   full-page canvas coordinates (the same space `page_dimensions` reports). System boxes
   **may overlap vertically** — engravers pack systems tightly with a jagged (not straight
   horizontal) divide to save vertical space, so consecutive systems' rectangular boxes can
@@ -68,6 +69,8 @@ lets the reader keep a whole system in view and advance predictably, system by s
 - **Tests**: new `tests/test_systems.py` (detection + golden boxes on a synthetic/known
   page) and `web/tests/control.test.js` cases for snap/interpolation; existing render,
   API, and control tests must stay green.
-- **Test case**: La Maja (all two-staff systems, includes pages with unclear inter-system
-  spacing) is the acceptance target.
+- **Test case**: La Maja (6 pages — clean two-staff pages, three-staff systems from rich
+  piano texture on pp. 4–5, a mixed 3-/2-staff page, and a skewed title page) is the
+  acceptance target. Detection validated against ground truth on all 6 pages
+  (`docs/notes/staff-system-detection-spike.md`).
 - **Non-breaking**: new endpoint and opt-in scroll mode; the MVP path is preserved.

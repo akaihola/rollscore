@@ -21,6 +21,7 @@ from gazescroll.ingest import ExtractionRoot, resolve_source
 from gazescroll.library import Library, load_library
 from gazescroll.render import page_dimensions, render_cached
 from gazescroll.state import StateStore
+from gazescroll.systems import detect_cached
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -90,6 +91,15 @@ def create_app(
         except KeyError:
             raise HTTPException(404, f"unknown score: {score_file!r}")
         return FileResponse(path, media_type="image/png")
+
+    @app.get("/api/score/{score_file}/systems")
+    def systems(score_file: str, request: Request) -> list[list[dict]]:
+        root = get_root(request)
+        try:
+            n_pages = len(page_dimensions(root, score_file))
+        except KeyError:
+            raise HTTPException(404, f"unknown score: {score_file!r}")
+        return [detect_cached(root, score_file, page=p) for p in range(1, n_pages + 1)]
 
     @app.get("/api/score/{score_file}/resume")
     def get_resume(score_file: str, request: Request) -> dict | None:

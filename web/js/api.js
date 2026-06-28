@@ -38,6 +38,11 @@ export function pageUrl(file, page, annotated) {
   return `/api/score/${seg}/page/${page}.png?annotated=${annotated ? 1 : 0}`;
 }
 
+/** Fetch detected staff-system boxes per page: `[[{top,bottom,left,right}, …], …]`. */
+export function getSystems(file) {
+  return getJson(`/api/score/${encodeURIComponent(file)}/systems`);
+}
+
 /** Fetch the saved resume position for a score (or null). */
 export function getResume(file) {
   return getJson(`/api/score/${encodeURIComponent(file)}/resume`);

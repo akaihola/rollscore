@@ -4,6 +4,10 @@ import {
   isReading,
   estimateReadingVelocity,
   stepController,
+  createSystemSelector,
+  systemScrollTarget,
+  stepTowardTarget,
+  createSystemController,
 } from "../js/gaze/control.js";
 
 describe("smoother", () => {
@@ -143,5 +147,102 @@ describe("stepController", () => {
       }
     );
     expect(out.scrollTop).toBeLessThanOrEqual(10000 - 1000);
+  });
+});
+
+// --- Phase 14: system-aware layer ------------------------------------------
+
+describe("createSystemSelector (active-system, forward-only)", () => {
+  it("advances on a right-portion sweep then a return to the left", () => {
+    const s = createSystemSelector({ sweepRightFrac: 0.6, returnLeftFrac: 0.3 });
+    expect(s.update(0.1, 3)).toBe(0);
+    expect(s.update(0.7, 3)).toBe(0); // swept into the right portion, not yet returned
+    expect(s.update(0.2, 3)).toBe(1); // return to the left → advance one system
+  });
+
+  it("does not advance on a stray leftward glance without a prior right sweep", () => {
+    const s = createSystemSelector({ sweepRightFrac: 0.6, returnLeftFrac: 0.3 });
+    expect(s.update(0.2, 3)).toBe(0);
+    expect(s.update(0.1, 3)).toBe(0);
+  });
+
+  it("never regresses and clamps at the last system (forward-only)", () => {
+    const s = createSystemSelector({ sweepRightFrac: 0.6, returnLeftFrac: 0.3 });
+    s.update(0.7, 2);
+    expect(s.update(0.2, 2)).toBe(1); // advanced to the last of two
+    s.update(0.7, 2);
+    expect(s.update(0.2, 2)).toBe(1); // would advance but clamps at count-1
+  });
+
+  it("is immune to vertical overlap (selection is saccade-driven, no y input)", () => {
+    const s = createSystemSelector();
+    s.update(0.9, 3);
+    expect(s.update(0.1, 3)).toBe(1);
+    expect(s.update(0.1, 3)).toBe(1); // a further left glance does not regress
+  });
+});
+
+describe("systemScrollTarget", () => {
+  const box = { top: 1000, bottom: 1300 }; // 300 px system
+  const viewportH = 600;
+  const opts = (fx) => ({ viewportH, topMargin: 20, fx });
+
+  it("snap start (fx=0) leaves the whole system at the screen bottom", () => {
+    expect(systemScrollTarget(box, opts(0))).toBe(1300 - 600);
+  });
+
+  it("sweep end (fx=1) raises the system top to the screen top minus the margin", () => {
+    expect(systemScrollTarget(box, opts(1))).toBe(1000 - 20);
+  });
+
+  it("interpolates linearly across the sweep", () => {
+    const a = systemScrollTarget(box, opts(0));
+    const b = systemScrollTarget(box, opts(1));
+    expect(systemScrollTarget(box, opts(0.5))).toBeCloseTo((a + b) / 2, 6);
+  });
+
+  it("clamps a system taller than the viewport to a plain top-align", () => {
+    const tall = { top: 1000, bottom: 1700 }; // 700 > viewport 600
+    expect(systemScrollTarget(tall, opts(0))).toBe(980); // = top - margin
+    expect(systemScrollTarget(tall, opts(1))).toBe(980);
+  });
+});
+
+describe("stepTowardTarget (forward-only, bounded)", () => {
+  it("steps toward a forward target, capped per frame", () => {
+    expect(stepTowardTarget(100, 1000, { maxStepPerFrame: 8, maxScroll: 5000 })).toBe(108);
+  });
+  it("never scrolls back when the target is behind the current position", () => {
+    expect(stepTowardTarget(500, 100, { maxStepPerFrame: 8, maxScroll: 5000 })).toBe(500);
+  });
+  it("clamps the target to maxScroll", () => {
+    expect(stepTowardTarget(4998, 99999, { maxStepPerFrame: 8, maxScroll: 5000 })).toBe(5000);
+  });
+});
+
+describe("createSystemController", () => {
+  const boxes = [{ top: 100, bottom: 400 }, { top: 500, bottom: 800 }];
+  const view = { viewportH: 600, scrollTop: 0, contentH: 5000 };
+
+  it("returns null when there are no boxes (caller uses the vertical follower)", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8 });
+    expect(c.update({ boxes: [], fx: 0.5, reading: true, ...view })).toBeNull();
+    expect(c.update({ boxes: undefined, fx: 0.5, reading: true, ...view })).toBeNull();
+  });
+
+  it("holds position and does not advance while not reading", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8 });
+    const r = c.update({ boxes, fx: 0.1, reading: false, ...view, scrollTop: 250 });
+    expect(r.scrollTop).toBe(250);
+    expect(r.active).toBe(0);
+  });
+
+  it("advances the active system on a sweep-and-return and steps forward only", () => {
+    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 100000 });
+    const r0 = c.update({ boxes, fx: 0.9, reading: true, ...view });
+    expect(r0.active).toBe(0);
+    const r1 = c.update({ boxes, fx: 0.1, reading: true, ...view });
+    expect(r1.active).toBe(1);
+    expect(r1.scrollTop).toBeGreaterThanOrEqual(0);
   });
 });

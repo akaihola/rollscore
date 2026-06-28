@@ -116,6 +116,123 @@ export function stepController(state, input) {
   return { scrollTop: next, state: { lastVelocity, coastRemainingMs } };
 }
 
+// ---------------------------------------------------------------------------
+// System-aware layer (Phase 14). Added alongside the pure core above, which
+// stays the per-page fallback (see design D4). Given the active page's detected
+// system boxes (in strip coords) plus the gaze sample, these compute a target
+// scrollTop from the *active system alone*: snap it fully into view on the
+// left-edge of the reading sweep, then raise it to the screen top as the gaze
+// sweeps left→right. All pure/deterministic so they unit-test against synthetic
+// gaze traces + box sets.
+// ---------------------------------------------------------------------------
+
+/**
+ * Active-system selector: forward-only, driven by the reading saccade.
+ *
+ * Because detected boxes can overlap vertically (an engraver's jagged divide),
+ * vertical containment is ambiguous and is **not** the advance trigger. Instead
+ * we advance one system when the gaze, after sweeping into the right portion of
+ * the music column (`fx ≥ sweepRightFrac`), returns to the left region
+ * (`fx ≤ returnLeftFrac`) — the start of the next line. This never regresses on
+ * overlapping boxes and ignores a stray leftward glance that was not preceded by
+ * a right-portion sweep. `update(fx, count)` returns the active index, clamped to
+ * `[0, count-1]`; `reset(i)` re-seats it (e.g. on a page change).
+ */
+export function createSystemSelector({ sweepRightFrac = 0.55, returnLeftFrac = 0.35 } = {}) {
+  let active = 0;
+  let sweptRight = false;
+  return {
+    active() {
+      return active;
+    },
+    reset(i = 0) {
+      active = i;
+      sweptRight = false;
+    },
+    update(fx, count) {
+      if (count <= 0) return active;
+      if (active > count - 1) active = count - 1;
+      if (fx >= sweepRightFrac) {
+        sweptRight = true;
+      } else if (fx <= returnLeftFrac && sweptRight) {
+        if (active < count - 1) active += 1;
+        sweptRight = false;
+      }
+      return active;
+    },
+  };
+}
+
+/**
+ * Scroll target (strip px) framing one system across the reading sweep.
+ *
+ * Left edge (`fx=0`): **snap start** `box.bottom − viewportH` — the minimal
+ * forward scroll that brings the whole system into view, sitting at the bottom of
+ * the screen. Right edge (`fx=1`): **sweep end** `box.top − topMargin` — the
+ * system raised to the screen top. In between, linearly interpolate by `fx`. A
+ * system taller than the viewport has `snapStart ≥ sweepEnd`; clamp it to a plain
+ * top-align (`sweepEnd`) so it never scrolls backwards mid-sweep.
+ */
+export function systemScrollTarget(box, { viewportH, topMargin = 0, fx }) {
+  const snapStart = box.bottom - viewportH;
+  const sweepEnd = box.top - topMargin;
+  if (snapStart >= sweepEnd) return sweepEnd; // taller than viewport → top-align
+  const f = Math.max(0, Math.min(1, fx));
+  return snapStart + (sweepEnd - snapStart) * f;
+}
+
+/**
+ * Forward-only, bounded step toward a target scrollTop — the same safety
+ * invariant as {@link stepController} (non-decreasing scrollTop, per-frame delta
+ * ≤ `maxStepPerFrame`). The target is clamped to `[0, maxScroll]`; a target
+ * behind the current position holds (never scrolls back).
+ */
+export function stepTowardTarget(scrollTop, target, { maxStepPerFrame, maxScroll }) {
+  const clamped = Math.max(0, Math.min(maxScroll, target));
+  const forward = Math.max(0, clamped - scrollTop);
+  return scrollTop + Math.min(maxStepPerFrame, forward);
+}
+
+/**
+ * Stateful system-aware controller. `update(frame)` takes the active page's
+ * system boxes (strip coords, ordered top→bottom), the gaze-x fraction `fx`
+ * across the music column, a `reading` gate, and the view geometry; it returns
+ * `{scrollTop, active}` or **null** when there are no boxes — the signal for the
+ * caller to route this frame through the vertical-gaze follower (design D5).
+ * While not reading it holds position (no advance, no scroll).
+ */
+export function createSystemController(initialParams) {
+  let params = { ...initialParams };
+  const selector = createSystemSelector(params);
+  return {
+    setParams(partial) {
+      params = { ...params, ...partial };
+    },
+    active() {
+      return selector.active();
+    },
+    reset(i = 0) {
+      selector.reset(i);
+    },
+    update({ boxes, fx, reading, viewportH, scrollTop, contentH }) {
+      if (!boxes || boxes.length === 0) return null;
+      if (!reading) return { scrollTop, active: selector.active() };
+      const active = selector.update(fx, boxes.length);
+      const target = systemScrollTarget(boxes[active], {
+        viewportH,
+        topMargin: params.systemTopMargin ?? 0,
+        fx,
+      });
+      const maxScroll = Math.max(0, contentH - viewportH);
+      const next = stepTowardTarget(scrollTop, target, {
+        maxStepPerFrame: params.maxStepPerFrame,
+        maxScroll,
+      });
+      return { scrollTop: next, active };
+    },
+  };
+}
+
 /**
  * Compose the full gaze→scroll pipeline into a stateful controller.
  *

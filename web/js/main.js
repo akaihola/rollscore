@@ -21,6 +21,7 @@ import {
   putTuning,
   getCalibration,
   putCalibration,
+  getSystems,
 } from "./api.js";
 import { buildChooser } from "./chooser.js";
 import {
@@ -34,7 +35,8 @@ import {
   onScoreEnd,
   pieceJumpPage,
 } from "./reader.js";
-import { createGazeController } from "./gaze/control.js";
+import { createGazeController, createSystemController, isReading } from "./gaze/control.js";
+import { createSystemOverlay } from "./gaze/overlay.js";
 import { WebGazerGazeSource } from "./gaze/webgazer-source.js";
 import {
   applyRecenter,
@@ -179,6 +181,59 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   const flush = () => save.flush();
   window.addEventListener("beforeunload", flush);
 
+  // ---- System-aware scrolling (Phase 14) ----------------------------------
+  // Fetch the per-page detected system boxes once (off the render path; empty on
+  // failure so the reader still works). They live in full-page canvas px; map a
+  // page's boxes into strip coords with the same `stripWidth / canvasWidth` scale
+  // the page images use, offset by the page's strip position. Recomputed per
+  // frame from the measured width so it survives a resize.
+  const systemsRaw = await getSystems(file).catch(() => []);
+
+  function pageStripBoxes(pageNum, w) {
+    const boxes = systemsRaw[pageNum - 1] || [];
+    const scale = w / (extDims[pageNum - 1]?.width || 1);
+    const offset = pageToScroll(extDims, w, pageNum);
+    return boxes.map((b) => ({
+      top: offset + b.top * scale,
+      bottom: offset + b.bottom * scale,
+      left: b.left * scale,
+      right: b.right * scale,
+    }));
+  }
+
+  // The whole score as one continuous top→bottom stack of systems (strip coords,
+  // already offset per page), each tagged with its `page`/`idx` for the overlay.
+  // This is what the system controller reads, so the active system advances across
+  // a page boundary instead of stalling at the last system of the current page.
+  function allStripBoxes(w) {
+    const out = [];
+    for (let p = 1; p <= extDims.length; p++) {
+      pageStripBoxes(p, w).forEach((b, idx) => out.push({ ...b, page: p - 1, idx }));
+    }
+    return out;
+  }
+
+  // First system not yet scrolled past — used to re-seat the forward-only selector
+  // after an external scroll (resume, manual nudge/jump, wheel/touch).
+  function activeAtScroll(flat, scrollTop) {
+    for (let i = 0; i < flat.length; i++) if (flat[i].bottom > scrollTop + 1) return i;
+    return Math.max(0, flat.length - 1);
+  }
+
+  const sysController = createSystemController(
+    controllerParams(tuning, scroller.getBoundingClientRect())
+  );
+  let lastAppliedScroll = null; // scrollTop the controller last set (detects manual scroll)
+
+  // The overlay positions boxes in page-relative % (resize-independent) and nests
+  // them per page so they inherit the crop transform; pass raw canvas boxes + dims.
+  const overlay = createSystemOverlay(strip, systemsRaw, extDims, {
+    opacity: tuning.overlayOpacity,
+    fadeMs: tuning.overlayFadeMs,
+  });
+  let overlayOn = false;
+  applyCropMode(strip, extDims, cropMode); // re-apply now the overlay containers exist
+
   // ---- Gaze loop ----------------------------------------------------------
   const controller = createGazeController(
     controllerParams(tuning, scroller.getBoundingClientRect())
@@ -212,6 +267,9 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     const update =
       key === "columnX0" || key === "columnX1" ? { [key]: value * w } : { [key]: value };
     controller.setParams(update);
+    sysController.setParams(update);
+    if (key === "overlayOpacity") overlay.setParams({ opacity: value });
+    if (key === "overlayFadeMs") overlay.setParams({ fadeMs: value });
     flushTuning();
   });
   tuningPanel.hidden = true;
@@ -260,14 +318,53 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
       const rect = scroller.getBoundingClientRect();
       const x = latestSample.x - rect.left;
       const y = applyRecenter(latestSample.y - rect.top, recenterOffset);
-      scroller.scrollTop = controller.update(
-        { t: latestSample.t, x, y, confidence: latestSample.confidence },
-        {
-          viewportH: rect.height,
-          scrollTop: scroller.scrollTop,
-          contentH: scroller.scrollHeight,
+      const view = {
+        viewportH: rect.height,
+        scrollTop: scroller.scrollTop,
+        contentH: scroller.scrollHeight,
+      };
+
+      // System-aware path over the whole score as one continuous stack of systems,
+      // so the active system advances across page boundaries; the vertical-gaze
+      // follower is the fallback when the score has no detected systems (design D5).
+      const w = stripWidth();
+      const flat = allStripBoxes(w);
+
+      // After an external scroll (resume, manual nudge/jump, wheel/touch) re-seat
+      // the forward-only selector to the system we're actually at.
+      if (lastAppliedScroll === null || Math.abs(scroller.scrollTop - lastAppliedScroll) > 1) {
+        sysController.reset(activeAtScroll(flat, scroller.scrollTop));
+      }
+
+      let handled = false;
+      if (flat.length) {
+        const colX0 = tuning.columnX0 * rect.width;
+        const colX1 = tuning.columnX1 * rect.width;
+        const fx =
+          colX1 > colX0 ? Math.max(0, Math.min(1, (x - colX0) / (colX1 - colX0))) : 0.5;
+        const reading = isReading(
+          { x, confidence: latestSample.confidence },
+          { columnX0: colX0, columnX1: colX1, minConfidence: tuning.minConfidence }
+        );
+        const res = sysController.update({ boxes: flat, fx, reading, ...view });
+        if (res) {
+          scroller.scrollTop = res.scrollTop;
+          lastAppliedScroll = scroller.scrollTop;
+          if (overlayOn) {
+            const b = flat[res.active];
+            overlay.setActive(b ? b.page : null, b ? b.idx : null);
+          }
+          handled = true;
         }
-      );
+      }
+      if (!handled) {
+        scroller.scrollTop = controller.update(
+          { t: latestSample.t, x, y, confidence: latestSample.confidence },
+          view
+        );
+        lastAppliedScroll = scroller.scrollTop;
+        if (overlayOn) overlay.setActive(null, null); // fallback shows no box
+      }
       maybeSetlistEnd();
     }
     rafId = requestAnimationFrame(frame);
@@ -389,6 +486,21 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     toggleTuning: () => {
       tuningPanel.hidden = !tuningPanel.hidden;
     },
+    toggleSystemOverlay: () => {
+      overlayOn = !overlayOn;
+      overlay.setVisible(overlayOn);
+      if (overlayOn) {
+        // Light the current page's first system immediately so "is it registered?"
+        // is answerable without engaging gaze; the gaze loop then crossfades the
+        // active system as you read.
+        overlay.setActive(currentPage() - 1, 0);
+        status.textContent =
+          "Overlay: on — current system highlighted; start gaze (Space) and read to see it track";
+      } else {
+        overlay.setActive(null, null);
+        status.textContent = "Overlay: off";
+      }
+    },
   });
 
   teardown = () => {
@@ -400,6 +512,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     clearAffordance();
     calibration?.cancel(); // leaving for the library removes any open cal dots
     tuningPanel.remove();
+    overlay.remove();
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("beforeunload", flush);
   };
