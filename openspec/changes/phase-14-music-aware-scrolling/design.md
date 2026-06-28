@@ -55,6 +55,17 @@ column width. This is the Audiveris GRID logic minus the engine. If La Maja's tr
 (unclear inter-system spacing) defeat it, escalate to the stable-paths / connected-path
 method — deferred, recorded as an open question, not built up front.
 
+**Systems are grouped by staff-line structure, not by horizontal whitespace.** The
+projection-profile peaks identify staff lines; staves are five equally-spaced peaks and a
+system is a pair of staves with the smaller (intra-system) inter-staff gap. The system
+*boundary* is therefore derived from which staves belong together, **not** from a row of
+blank pixels between systems. This matters because engravers pack systems tightly with a
+**jagged divide** to save vertical space: the tight rectangular bounding box of system *i*
+(its lowest content on one side) can overlap in rows with system *i+1* (its highest content
+on the other side). The detector MUST allow consecutive boxes to overlap vertically and
+MUST NOT split systems by cutting at a horizontal whitespace gap (there may be none). Boxes
+are still ordered top-to-bottom by their staff-pair centers.
+
 ### D3: New `gazescroll/systems.py`, thin route, disk cache
 Detection lives in its own module (pure functions over a page image + page size), mirroring
 `render.py`'s shape. The route in `app.py` is thin (resolve root → call cached detector →
@@ -78,7 +89,14 @@ up the screen. The controller is **forward-only**: `scrollTop` never decreases. 
 Both interpolation endpoints are derived from that one system (in strip coords,
 `sysTop`/`sysBottom`, viewport height `vh`, small top margin `m`):
 
-- (a) Select the active system forward-only.
+- (a) Select the active system forward-only. **Because boxes can overlap vertically
+  (see D2), vertical containment alone is ambiguous and is not the advance trigger.**
+  Advancement from system *i* to *i+1* is driven by the reading saccade: after gaze has
+  swept into the right portion of the music column within system *i*, a return to the left
+  region (the start of a new line) advances the active system by one. Vertical position is
+  used only to keep selection consistent (pick the forward-most system whose span the gaze
+  is plausibly in) and never selects an earlier system. This makes selection robust when
+  box *i* and box *i+1* share rows.
 - (b) **Snap start = `sysBottom − vh`** — the minimal forward scroll that brings the whole
   system into view, leaving the system sitting at the bottom of the screen. This is the
   left-edge target.
@@ -105,6 +123,31 @@ New params (the sweep-end top margin `m`, snap/interpolation smoothing) join the
 surfaced in `tuning.js` and persisted through `/api/tuning`, so the dev panel updates them
 live exactly like today's params.
 
+### D7: Debug visualization — shaded active-system rectangle with crossfade
+A debug toggle renders the detected system boxes for the current page. The primary visual is
+a **faint background shading rectangle behind the active system** (a low-opacity fill, drawn
+*behind* the music so it reads as a highlight, not an occlusion), positioned in strip
+coordinates using the same `stripWidth / canvasWidth` scaling the controller uses. When the
+active system advances (D4), the shading **crossfades**: the old box's rectangle fades out
+while the new box's fades in over a short, tunable duration. Because boxes can overlap (D2),
+two rectangles being partly visible mid-crossfade is expected and acceptable.
+
+This crossfade is deliberately dual-purpose:
+- **Bounding-box indicator** — confirms the detector's box for the active system is placed
+  correctly against the rendered music.
+- **Gaze-shift detector** — the fade *is* the visible signal that the controller decided the
+  gaze moved to the next system (the D4 advance event). If the shading jumps too early/late
+  or to the wrong box, the active-system advance logic is wrong — making this the primary
+  debugging surface for the overlap-robust selection.
+
+Implementation: a DOM overlay layer over the strip (absolutely-positioned divs, one per
+system box) is preferred over canvas drawing — it composites with CSS opacity transitions
+for free and needs no per-frame redraw, only a class/opacity change on active-system change.
+The toggle is a tuning-panel control (and may also be a keyboard shortcut consistent with the
+existing dev toggles); it is off by default and purely diagnostic — it never affects scroll.
+When the page is in the vertical-gaze fallback (no systems, D5) there are no boxes to show, so
+the overlay is empty.
+
 ## Risks / Trade-offs
 
 - **Projection profile fails on curved/skewed staves** → boxes wrong or empty. Mitigation:
@@ -113,6 +156,10 @@ live exactly like today's params.
 - **Mis-paired staves (odd staff, three-staff organ-like layouts)** → wrong system spans.
   Mitigation: spec requires an unpaired staff to surface as a single-staff system rather
   than be dropped/merged; pairing validated on the La Maja golden.
+- **Vertically-overlapping boxes confuse active-system tracking** → the controller jumps to
+  the wrong system or oscillates between two overlapping boxes. Mitigation: D4 advances on
+  the left-edge reading saccade (forward-only), not on vertical containment; the D7
+  crossfade makes any mis-selection immediately visible during tuning.
 - **Snap/interpolation feels jerky** → poor UX. Mitigation: reuse the bounded-step controller
   so motion stays smooth; expose smoothing as a tuning param.
 - **Detection latency on first request** → endpoint slow on cold cache. Mitigation: disk
@@ -141,3 +188,8 @@ live exactly like today's params.
 - Systems taller than the viewport (rare for solo piano): the fully-visible snap start
   (`sysBottom − vh`) would exceed the top-aligned end (`sysTop − m`) — clamp so the sweep
   degrades to a plain top-align rather than scrolling backward. Confirm on real renders.
+- How much do La Maja's boxes actually overlap, and is the left-edge-saccade advance rule
+  (D4) sufficient on its own, or is a minimum dwell / sweep-progress threshold needed to
+  avoid advancing on stray leftward glances? (Tune against the D7 crossfade.)
+- Crossfade duration and shading opacity for the D7 overlay: fixed defaults vs. tuning
+  params — decide once it is visible on real renders.

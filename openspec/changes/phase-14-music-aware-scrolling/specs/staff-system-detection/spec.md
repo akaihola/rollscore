@@ -5,9 +5,11 @@
 The system SHALL detect grand-staff systems on a rendered score page by computing a
 horizontal projection profile of the page bitmap, identifying staff lines as profile
 peaks, grouping five consecutive equally-spaced lines into a staff, and pairing
-consecutive staves into two-staff systems. Each detected system SHALL be reported as a
-bounding box in full-page canvas coordinates — the same coordinate space that
-`page_dimensions` reports — with `top`, `bottom`, `left`, and `right` in pixels.
+consecutive staves into two-staff systems. Systems SHALL be grouped by staff-line
+structure (which staves belong together), NOT by detecting a horizontal whitespace gap
+between systems. Each detected system SHALL be reported as a bounding box in full-page
+canvas coordinates — the same coordinate space that `page_dimensions` reports — with
+`top`, `bottom`, `left`, and `right` in pixels.
 
 #### Scenario: Two-staff piano page
 
@@ -20,6 +22,22 @@ bounding box in full-page canvas coordinates — the same coordinate space that
 - **WHEN** a system box is returned for a page
 - **THEN** its coordinates are expressed in the page's full-page canvas pixel space
 - **AND** scaling a box by `stripWidth / canvasWidth` maps it onto the rendered strip
+
+### Requirement: System boxes may overlap vertically
+
+The detector SHALL allow the bounding boxes of consecutive systems to overlap vertically.
+Engravers pack systems tightly with a jagged (non-horizontal) divide to save vertical
+space, so the rectangular box of one system can share rows with the next. The detector
+SHALL NOT assume a clean horizontal whitespace gap separates systems and SHALL NOT drop,
+merge, or clip a system solely because its box overlaps a neighbour's. Systems SHALL still
+be ordered top-to-bottom by their staff-pair vertical centers.
+
+#### Scenario: Tightly-packed systems with a jagged divide
+
+- **WHEN** detection runs on a page where consecutive systems are packed with no clear
+  horizontal gap between them
+- **THEN** each system is still reported as a distinct box ordered top-to-bottom
+- **AND** boxes whose vertical spans overlap are both retained, not merged or clipped
 
 ### Requirement: Robust degradation when detection is uncertain
 
