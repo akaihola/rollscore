@@ -17,4 +17,4 @@
 ## 4. Verify
 
 - [x] 4.1 Run `web/tests` and `tests/test_state.py`; all green.
-- [ ] 4.2 Webcam/fake-gaze check: a next system partially visible at the bottom snaps fully into view when it becomes active, even though it's hard to fixate on while clipped.
+- [x] 4.2 Webcam/fake-gaze check: a next system partially visible at the bottom snaps fully into view when it becomes active, even though it's hard to fixate on while clipped. (Confirmed live; also surfaced + fixed the crop-mode coordinate mismatch that left zoomed systems clipped.)
