@@ -25,8 +25,8 @@ import json
 import numpy as np
 from PIL import Image
 
-from gazescroll.ingest import ExtractionRoot, _cache_dir
-from gazescroll.render import _slug, render_cached
+from rollscore.ingest import ExtractionRoot, _cache_dir
+from rollscore.render import _slug, render_cached
 
 # --- Tuned in the Phase 14 spike (scratchpad/spike2.py over La Maja) ----------
 _INK_THRESHOLD = 160        # grayscale < this is ink (clean black-on-white renders)

@@ -1,6 +1,6 @@
 import pymupdf
 
-from gazescroll.crop import PX_PER_PT, canvas_size, overlay_affine, page_to_canvas_matrix
+from rollscore.crop import PX_PER_PT, canvas_size, overlay_affine, page_to_canvas_matrix
 
 
 def test_page_fits_full_width_top_left():

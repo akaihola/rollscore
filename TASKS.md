@@ -9,7 +9,7 @@ For finished/background features and the longer wishlist, see [BACKLOG.md][backl
 
 ---
 
-## Active effort — gaze-scroll score reader web app
+## Active effort — rollscore web app
 
 **Where the work lives** (the implementation is on a branch, not on `main`):
 
@@ -78,7 +78,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
   - [x] **13.1 Golden registration check** (`tests/test_render_golden.py`): renders
     all 6 La Maja pages and asserts dark-pixel IoU > 0.55 vs forScore's
     standardized-dimensions annotated export (measured 0.65–0.999). Opt-in: skips
-    without `out/` + the export PDF (`GAZESCROLL_LAMAJA_EXPORT`, copyrighted).
+    without `out/` + the export PDF (`ROLLSCORE_LAMAJA_EXPORT`, copyrighted).
   - [x] **Display sizing: full-page fit (render model v3, 2026-06-21).** The v2
     render baked forScore's zoom-crop into the page, so the displayed page was a
     magnified middle slice (zoom≈1.1–1.25 → ~15–25% too large, side margins
@@ -90,7 +90,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
     the page. Golden test now compares in forScore's export space (re-crop our
     render back; IoU 0.68–0.96). Verified live via CDP (La Maja: full header +
     right-margin "poco rall." now visible, two systems fit). Note: the render
-    cache key is unchanged, so clear `~/.cache/gazescroll/render` after this.
+    cache key is unchanged, so clear `~/.cache/rollscore/render` after this.
   - [x] **13.2 End-to-end manual acceptance** — verified on 2026-06-27: basic
     mechanics work end-to-end (chooser → reader → calibrate → play). Core is
     functionally complete. **Status**: moved to main; ready for post-MVP tuning.
@@ -102,7 +102,7 @@ the checkboxes below as phases complete (keep them in sync with the branch).
     left screen edge, snap the staff system into view; as gaze moves left→right,
     scroll so the system's top edge reaches screen top by the right edge.
   - **Status (2026-06-28)**: code + tests complete on branch `phase-14-detection`.
-    Detection backend (`gazescroll/systems.py`), `/api/score/{file}/systems`
+    Detection backend (`rollscore/systems.py`), `/api/score/{file}/systems`
     endpoint, system-aware controller (`createSystemController` in `control.js`),
     debug overlay (`gaze/overlay.js`, toggle `o`), tuning params, and full backend
     + 121 web tests all green. Projection-profile detection validated on all 6 La
@@ -122,7 +122,7 @@ The first real UI is Phase 7. Until then, boot the server in **your own** shell
 browser), then open `http://127.0.0.1:8765/`:
 
 ```
-! cd .worktrees/plan-gaze-scroll-mvp && uv run uvicorn gazescroll.app:create_app --factory --port 8765
+! cd .worktrees/plan-gaze-scroll-mvp && uv run uvicorn rollscore.app:create_app --factory --port 8765
 ```
 
 `…/web/spike/gaze-accuracy.html` is the interactive Phase 0 webcam harness.

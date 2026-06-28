@@ -1,17 +1,59 @@
-# forscore-archive
+# rollscore
 
-Reverse-engineering and extraction of ForScore's `.4sb` **Archive** backup format, so
-sheet-music PDFs **and** their annotations can be recovered on Linux — no Mac, no jailbreak,
-no ForScore install. Reverse-engineered from a real 151 MB Archive on 2026-06-07.
+A sheet-music reader that does away with page turns. Instead of flipping discrete pages,
+rollscore renders the whole score as one continuous strip and **scrolls it for you,
+automatically, from sensor input** — so your hands stay on the instrument.
+
+The sensor today is **gaze**: a webcam tracks where you're reading on the page and the music
+keeps pace with your eyes. The architecture treats the read-position signal as pluggable, so
+other sensors (head pose, a foot pedal, audio-following, …) can drive the same scroll later.
+
+It runs entirely on your own machine — a local FastAPI server plus a thin browser front-end,
+no cloud, no account.
+
+## Running the reader web app
+
+The `rollscore` package is a local FastAPI server for reading scores. Once dependencies are
+synced (`uv sync`), start it with the console script:
+
+```bash
+uv run rollscore                 # http://127.0.0.1:8765/
+uv run rollscore --port 9000     # custom port
+uv run rollscore --reload        # auto-reload on code changes (development)
+```
+
+Host and port also read from `ROLLSCORE_HOST` / `ROLLSCORE_PORT`; explicit flags win.
+The extraction cache location is `ROLLSCORE_CACHE` (default `~/.cache/rollscore`).
+
+> **Run it in your own shell, not via an agent.** A server an agent backgrounds lands
+> in a sandboxed network namespace and is unreachable from your browser. Use your real
+> terminal (in Claude Code, prefix with `!`). Browsers treat `127.0.0.1` as a secure
+> context, so the webcam works there over plain HTTP — use `127.0.0.1`, not the LAN IP.
+
+## Status
+
+- [x] Container format decoded (`4SBV03`)
+- [x] Annotation encoding decoded (manifest `bplist00`)
+- [x] Extractor script — dump original PDFs + export annotations
+- [x] Reader web app — continuous render, gaze-driven auto-scroll, annotation overlays
+
+---
+
+## forScore import compatibility
+
+rollscore reads sheet music exported from [forScore](https://forscore.co/) (the iPad app),
+so you can carry an existing annotated library over to Linux. This required reverse-engineering
+forScore's `.4sb` **Archive** backup format — documents **and** their annotations — with no Mac,
+no jailbreak, and no forScore install. Reverse-engineered from a real 151 MB Archive on
+2026-06-07.
 
 See [memory/forscore-annotation-extraction.md](memory/forscore-annotation-extraction.md) for
-the wider context (how ForScore stores data, backup strategy, destination apps) and
+the wider context (how forScore stores data, backup strategy, destination apps) and
 [memory/forscore-open-questions.md](memory/forscore-open-questions.md) for the research trail.
-For planning the downstream web app, see
-[docs/feature-coverage.md](docs/feature-coverage.md) — a forScore-feature ↔ archive-data
-coverage matrix with MVP scope recommendations.
+For the feature mapping, see [docs/feature-coverage.md](docs/feature-coverage.md) — a
+forScore-feature ↔ archive-data coverage matrix with MVP scope recommendations.
 
-## The `4SBV03` container format
+### The `4SBV03` container format
 
 > Not a ZIP (a common web claim — wrong) and no SQLite file. The container is a flat,
 > linear concatenation of entries; each entry is a fixed-width ASCII header immediately
@@ -36,7 +78,7 @@ Parse robustly by scanning for the gzip magic `1f 8b 08`; the bytes before each 
 its ASCII header. (`gzip.decompress()` fails — it trips over the text header after member 1;
 use `zlib.decompressobj(31)` and read `unused_data` to find the next boundary.)
 
-## Annotation encoding (manifest `bplist00`, entry 1)
+### Annotation encoding (manifest `bplist00`, entry 1)
 
 A single **flat dict** (~2300 keys for this library); keys are pipe/namespace-delimited paths.
 No raw binary annotation blobs — everything is structured strings / lists / dicts:
@@ -52,7 +94,7 @@ No raw binary annotation blobs — everything is structured strings / lists / di
 | Setlists       | `&SYS;setlists` → `&SET;<name>`                                                                                     | ordered lists of filenames                                                                                       |
 | App settings   | ~90 `&SYS;…` keys                                                                                                   | brushes, ruler, tuner, metronome, pen presets, …                                                                 |
 
-## Usage
+### Usage
 
 ```bash
 ./extract_4sb.py "Archive ….4sb" -o out      # uv run --script: auto-installs deps
@@ -60,34 +102,5 @@ uv run pytest                                 # run the tests
 ```
 
 Output: `out/pdfs/` (original documents), `out/manifest.json` (restructured metadata +
-annotations), `out/stamps/*.png`, `out/setlists.json`. Auxiliary assets ForScore stores
+annotations), `out/stamps/*.png`, `out/setlists.json`. Auxiliary assets forScore stores
 alongside scores (rendered page PNGs, `.4se` layer files) land in `out/aux/`.
-
-## Running the reader web app
-
-The `gazescroll` package is a local FastAPI server for reading scores (the
-gaze-scroll reader; see [docs/feature-coverage.md](docs/feature-coverage.md) and the
-MVP plan). Once dependencies are synced (`uv sync`), start it with the console script:
-
-```bash
-uv run gazescroll                 # http://127.0.0.1:8765/
-uv run gazescroll --port 9000     # custom port
-uv run gazescroll --reload        # auto-reload on code changes (development)
-```
-
-Host and port also read from `GAZESCROLL_HOST` / `GAZESCROLL_PORT`; explicit flags win.
-The extraction cache location is `GAZESCROLL_CACHE` (default `~/.cache/gazescroll`).
-
-> **Run it in your own shell, not via an agent.** A server an agent backgrounds lands
-> in a sandboxed network namespace and is unreachable from your browser. Use your real
-> terminal (in Claude Code, prefix with `!`). Browsers treat `127.0.0.1` as a secure
-> context, so the webcam works there over plain HTTP — use `127.0.0.1`, not the LAN IP.
-
-The HTTP routes that resolve a library from an extracted `out/` (or a `.4sb` archive)
-land in a later phase; until then the server serves the front-end shell and `/healthz`.
-
-## Status
-
-- [x] Container format decoded (`4SBV03`)
-- [x] Annotation encoding decoded (manifest `bplist00`)
-- [x] Extractor script — dump original PDFs + export annotations

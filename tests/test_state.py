@@ -1,4 +1,4 @@
-from gazescroll.state import StateStore
+from rollscore.state import StateStore
 
 
 def test_resume_roundtrip(tmp_path):

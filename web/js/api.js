@@ -1,5 +1,5 @@
 /**
- * Thin client for the gaze-scroll backend API.
+ * Thin client for the Rollscore backend API.
  *
  * DOM-free so it runs under Vitest's `node` environment. Every score filename
  * is URL-encoded as a single path segment (forScore filenames contain spaces,

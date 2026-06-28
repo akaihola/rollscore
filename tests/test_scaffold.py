@@ -1,4 +1,4 @@
 def test_package_imports():
-    import gazescroll  # noqa: F401
+    import rollscore  # noqa: F401
 
-    assert gazescroll.__name__ == "gazescroll"
+    assert rollscore.__name__ == "rollscore"

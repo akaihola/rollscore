@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from gazescroll.ingest import ExtractionRoot, resolve_source
+from rollscore.ingest import ExtractionRoot, resolve_source
 
 
 def test_resolve_prebuilt_out_dir(tmp_path: Path):
@@ -28,7 +28,7 @@ def test_extract_4sb_then_reuse(tmp_path: Path, sample_archive: bytes, monkeypat
     archive = tmp_path / "Archive test.4sb"
     archive.write_bytes(sample_archive)
     cache = tmp_path / "cache"
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(cache))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(cache))
 
     root = resolve_source(archive)
     assert root.manifest_path.exists()

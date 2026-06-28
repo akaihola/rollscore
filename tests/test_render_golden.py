@@ -1,6 +1,6 @@
 """Golden registration check: render fidelity vs forScore's own export.
 
-Validates the empirical crop model (``gazescroll.crop``) against ground truth —
+Validates the empirical crop model (``rollscore.crop``) against ground truth —
 forScore's *standardized-dimensions annotated export* of ``4 La Maja y el
 Ruisenor`` (612x800-pt pages with annotations flattened in). Rendering that
 export at the canvas resolution IS forScore's exact display, so a faithful crop
@@ -8,7 +8,7 @@ makes our render's dark pixels overlap forScore's.
 
 Opt-in: skips unless the extracted ``out/`` library AND the export PDF are
 present. The export is copyrighted (a personal forScore backup), so it lives
-outside the repo. Point the test at it with ``GAZESCROLL_LAMAJA_EXPORT`` or drop
+outside the repo. Point the test at it with ``ROLLSCORE_LAMAJA_EXPORT`` or drop
 it at the default uploads path below.
 """
 from __future__ import annotations
@@ -22,9 +22,9 @@ import pymupdf
 import pytest
 from PIL import Image, ImageChops
 
-from gazescroll.crop import overlay_affine
-from gazescroll.ingest import resolve_source
-from gazescroll.render import render_cached
+from rollscore.crop import overlay_affine
+from rollscore.ingest import resolve_source
+from rollscore.render import render_cached
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 SCORE = "4 La Maja y el Ruisenor.pdf"
@@ -36,7 +36,7 @@ _DEFAULT_EXPORT = (
 
 
 def _export_path() -> Path:
-    return Path(os.environ.get("GAZESCROLL_LAMAJA_EXPORT", _DEFAULT_EXPORT))
+    return Path(os.environ.get("ROLLSCORE_LAMAJA_EXPORT", _DEFAULT_EXPORT))
 
 
 def _dark_mask(img: Image.Image) -> Image.Image:
@@ -101,7 +101,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(autouse=True)
 def _temp_cache(tmp_path_factory, monkeypatch):
     """Render into a throwaway cache so the test never touches ~/.cache."""
-    monkeypatch.setenv("GAZESCROLL_CACHE", str(tmp_path_factory.mktemp("cache")))
+    monkeypatch.setenv("ROLLSCORE_CACHE", str(tmp_path_factory.mktemp("cache")))
 
 
 @pytest.mark.parametrize("page", [1, 2, 3, 4, 5, 6])

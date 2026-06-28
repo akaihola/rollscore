@@ -10,8 +10,8 @@ import extract_4sb
 
 
 def _cache_dir() -> Path:
-    base = os.environ.get("GAZESCROLL_CACHE")
-    return Path(base) if base else Path.home() / ".cache" / "gazescroll"
+    base = os.environ.get("ROLLSCORE_CACHE")
+    return Path(base) if base else Path.home() / ".cache" / "rollscore"
 
 
 @dataclass(frozen=True)

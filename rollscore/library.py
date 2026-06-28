@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pymupdf  # PyMuPDF; module also importable as `fitz`
 
-from gazescroll.ingest import ExtractionRoot
+from rollscore.ingest import ExtractionRoot
 
 logger = logging.getLogger(__name__)
 
