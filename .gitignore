@@ -28,8 +28,9 @@
 # Vendored front-end libs (large; re-fetch via web/vendor/README.md)
 /web/vendor/webgazer.js
 
-# Node / front-end tooling
+# Node / front-end tooling (Vitest runs via npx; no in-repo results to track)
 web/node_modules/
+/node_modules/
 
 # Python
 __pycache__/

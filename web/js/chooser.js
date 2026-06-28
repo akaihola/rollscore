@@ -6,13 +6,12 @@
  * where Score = {filename, title, composer, page_count, pieces:[{title,
  * first_page, last_page}]}.
  *
- * `buildChooser(model, {onOpen})` returns a detached element; `onOpen` is called
- * with `{file, page, pieces, setlist}` when a score or one of its pieces is
- * chosen. `pieces` is the score's piece list (for in-reader piece navigation);
- * `setlist` is `{items: [{title, file}, …], index}` when the score was opened
- * from a setlist (so the reader can stop-and-wait at its end) or `null`.
- * No global state — the caller mounts the returned node.
+ * `buildChooser(model)` returns a detached element. Score and piece entries are
+ * real `<a href="/score/...">` links (see {@link scorePath}); opening a score is
+ * a normal browser navigation — the bootstrap routes from the path on load. No
+ * global state, no `onOpen` callback — the caller mounts the returned node.
  */
+import { scorePath } from "./paths.js";
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -21,34 +20,27 @@ function el(tag, className, text) {
   return node;
 }
 
-/**
- * Build a clickable score entry, with its pieces listed when multi-piece.
- *
- * `setlist` (when the entry lives in a setlist) is forwarded verbatim in every
- * `onOpen` payload so the reader knows its place in the running order.
- */
-function scoreEntry(score, onOpen, setlist = null) {
+function link(className, text, file, page) {
+  const a = el("a", className, text);
+  a.href = scorePath(file, page);
+  a.dataset.file = file;
+  return a;
+}
+
+/** Build a score entry: a title link, with its pieces listed when multi-piece. */
+function scoreEntry(score) {
   const wrap = el("div", "score-wrap");
   const pieces = score.pieces ?? [];
 
-  const title = el("button", "score", score.title);
-  title.dataset.file = score.filename;
-  title.addEventListener("click", () =>
-    onOpen({ file: score.filename, page: 1, pieces, setlist })
-  );
-  wrap.append(title);
+  wrap.append(link("score", score.title, score.filename, 1));
 
   if (pieces.length) {
     const list = el("ul", "pieces");
     for (const piece of pieces) {
       const item = el("li");
-      const btn = el("button", "piece", piece.title);
-      btn.dataset.file = score.filename;
-      btn.dataset.page = String(piece.first_page);
-      btn.addEventListener("click", () =>
-        onOpen({ file: score.filename, page: piece.first_page, pieces, setlist })
-      );
-      item.append(btn);
+      const a = link("piece", piece.title, score.filename, piece.first_page);
+      a.dataset.page = String(piece.first_page);
+      item.append(a);
       list.append(item);
     }
     wrap.append(list);
@@ -56,7 +48,7 @@ function scoreEntry(score, onOpen, setlist = null) {
   return wrap;
 }
 
-export function buildChooser(model, { onOpen }) {
+export function buildChooser(model) {
   const root = el("div", "chooser");
 
   // Setlists — ordered as the backend serialized them.
@@ -65,10 +57,9 @@ export function buildChooser(model, { onOpen }) {
   for (const [name, scores] of Object.entries(model.setlists)) {
     const details = el("details");
     details.append(el("summary", null, name));
-    const items = scores.map((s) => ({ title: s.title, file: s.filename }));
-    scores.forEach((score, index) =>
-      details.append(scoreEntry(score, onOpen, { items, index }))
-    );
+    // Permalinks open a score standalone — the setlist running order is not
+    // carried in the URL (design Non-Goal), so the entries are plain score links.
+    scores.forEach((score) => details.append(scoreEntry(score)));
     setlists.append(details);
   }
   root.append(setlists);
@@ -79,7 +70,7 @@ export function buildChooser(model, { onOpen }) {
   for (const group of model.composers) {
     const groupNode = el("div", "composer-group");
     groupNode.append(el("h3", null, group.composer));
-    for (const score of group.scores) groupNode.append(scoreEntry(score, onOpen));
+    for (const score of group.scores) groupNode.append(scoreEntry(score));
     composers.append(groupNode);
   }
   root.append(composers);

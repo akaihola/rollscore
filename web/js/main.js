@@ -24,6 +24,7 @@ import {
   getSystems,
 } from "./api.js";
 import { buildChooser } from "./chooser.js";
+import { scorePath } from "./paths.js";
 import {
   applyCropMode,
   buildStrip,
@@ -59,6 +60,15 @@ function el(tag, className, text) {
 
 function showError(message) {
   app.replaceChildren(el("p", "error", message));
+}
+
+/** Parse `/score/<file>[?page=n]` from the URL, or `null` for any other path. */
+function parsePath() {
+  const m = location.pathname.match(/^\/score\/(.+)$/);
+  if (!m) return null;
+  const file = decodeURIComponent(m[1]);
+  const page = Number(new URLSearchParams(location.search).get("page")) || 1;
+  return { file, page };
 }
 
 /** Are we in cameraless dev mode (`?fakegaze` / `?fakegaze=1`)? */
@@ -299,14 +309,11 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     banner.append(el("span", null, message));
     const go = el("button", null, "Open next →");
     go.addEventListener("click", () => {
-      clearAffordance();
+      // Navigate to the next score's permalink. The setlist running-order context
+      // is not carried in the URL (a permalink opens the score standalone — design
+      // Non-Goal); saved-resume restores its position.
       teardown();
-      openReader({
-        file: next.file,
-        page: 1,
-        setlist: { ...setlist, index: setlist.index + 1 },
-        initialCropMode: cropMode,
-      });
+      location.assign(scorePath(next.file, 1));
     });
     banner.append(go);
     document.body.append(banner);
@@ -469,7 +476,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     nextPiece: () => jumpPiece(1),
     backToChooser: () => {
       teardown();
-      boot();
+      location.assign("/");
     },
     toggleAnnotations: () => {
       annotated = !annotated;
@@ -520,7 +527,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   // Toolbar buttons mirror the keyboard handlers for mouse users.
   back.addEventListener("click", () => {
     teardown();
-    boot();
+    location.assign("/");
   });
   annotateBtn.addEventListener("click", () => {
     annotated = !annotated;
@@ -541,10 +548,37 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
 async function boot() {
   try {
     const model = await getLibrary();
-    app.replaceChildren(buildChooser(model, { onOpen: openReader }));
+    app.replaceChildren(buildChooser(model));
   } catch (err) {
     showError(`Could not load library: ${err.message}`);
   }
 }
 
-boot();
+/**
+ * Route from the URL path: `/score/<file>` opens that score in the reader (a
+ * direct load has no chooser model in memory, so fetch the library for the
+ * score's pieces); an unknown filename or any other path falls back to the
+ * chooser.
+ */
+async function route() {
+  const target = parsePath();
+  if (!target) {
+    boot();
+    return;
+  }
+  let model;
+  try {
+    model = await getLibrary();
+  } catch (err) {
+    showError(`Could not load library: ${err.message}`);
+    return;
+  }
+  const score = model.scores[target.file];
+  if (!score) {
+    boot();
+    return;
+  }
+  openReader({ file: target.file, page: target.page, pieces: score.pieces ?? [] });
+}
+
+route();

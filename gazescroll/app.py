@@ -134,6 +134,12 @@ def create_app(
     def index() -> FileResponse:
         return FileResponse(WEB_DIR / "index.html")
 
+    @app.get("/score/{score_file}")
+    def score_page(score_file: str) -> FileResponse:
+        # Same shell as `/`; the front-end routes on the path. `/api` routes and
+        # the `/web` mount still win (distinct path namespaces).
+        return FileResponse(WEB_DIR / "index.html")
+
     # Static front-end (js/, vendor/, spike/). Mounted last so API routes win.
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
     return app

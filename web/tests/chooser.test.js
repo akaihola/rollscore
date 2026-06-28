@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { buildChooser } from "../js/chooser.js";
 
 function model() {
@@ -47,13 +47,13 @@ function model() {
 
 describe("buildChooser", () => {
   it("renders a setlists section with one details per setlist, in order", () => {
-    const node = buildChooser(model(), { onOpen: () => {} });
+    const node = buildChooser(model());
     const summaries = [...node.querySelectorAll(".setlists details > summary")];
     expect(summaries.map((s) => s.textContent)).toEqual(["Recital", "Encore"]);
   });
 
   it("renders a composer-sorted section", () => {
-    const node = buildChooser(model(), { onOpen: () => {} });
+    const node = buildChooser(model());
     const headings = [...node.querySelectorAll(".composers .composer-group > h3")];
     expect(headings.map((h) => h.textContent)).toEqual([
       "Bach",
@@ -63,64 +63,37 @@ describe("buildChooser", () => {
   });
 
   it("exposes the pieces of a multi-piece score", () => {
-    const node = buildChooser(model(), { onOpen: () => {} });
+    const node = buildChooser(model());
     const pieces = [
       ...node.querySelectorAll('.composers .piece[data-file="Études, Op. 10.pdf"]'),
     ];
     expect(pieces.map((p) => p.textContent)).toEqual(["No. 1", "No. 2"]);
   });
 
-  it("fires onOpen with file, page, the score's pieces and no setlist when a piece is clicked", () => {
-    const onOpen = vi.fn();
-    const node = buildChooser(model(), { onOpen });
+  it("links a piece to its score permalink with a ?page query", () => {
+    const node = buildChooser(model());
     const piece = node.querySelector(
       '.composers .piece[data-file="Études, Op. 10.pdf"][data-page="4"]'
     );
-    piece.click();
-    expect(onOpen).toHaveBeenCalledWith({
-      file: "Études, Op. 10.pdf",
-      page: 4,
-      pieces: [
-        { title: "No. 1", first_page: 1, last_page: 3 },
-        { title: "No. 2", first_page: 4, last_page: 6 },
-      ],
-      setlist: null,
-    });
+    expect(piece.tagName).toBe("A");
+    expect(piece.getAttribute("href")).toBe(
+      "/score/%C3%89tudes%2C%20Op.%2010.pdf?page=4"
+    );
   });
 
-  it("fires onOpen at page 1 with empty pieces when a score title is clicked", () => {
-    const onOpen = vi.fn();
-    const node = buildChooser(model(), { onOpen });
+  it("links a score title to its permalink with no ?page at page 1", () => {
+    const node = buildChooser(model());
     const score = node.querySelector('.composers .score[data-file="Sonata.pdf"]');
-    score.click();
-    expect(onOpen).toHaveBeenCalledWith({
-      file: "Sonata.pdf",
-      page: 1,
-      pieces: [],
-      setlist: null,
-    });
+    expect(score.tagName).toBe("A");
+    expect(score.getAttribute("href")).toBe("/score/Sonata.pdf");
   });
 
-  it("passes setlist context (items + index) when opened from a setlist", () => {
-    const onOpen = vi.fn();
-    const node = buildChooser(model(), { onOpen });
-    // The "Recital" setlist is [Études, Sonata]; click Sonata (index 1).
+  it("links setlist entries to the same per-score permalink", () => {
+    const node = buildChooser(model());
+    // The "Recital" setlist is [Études, Sonata]; the Sonata entry links to its score.
     const score = node.querySelector(
       '.setlists details .score[data-file="Sonata.pdf"]'
     );
-    score.click();
-    expect(onOpen).toHaveBeenCalledWith(
-      expect.objectContaining({
-        file: "Sonata.pdf",
-        page: 1,
-        setlist: {
-          items: [
-            { title: "Études, Op. 10", file: "Études, Op. 10.pdf" },
-            { title: "Sonata", file: "Sonata.pdf" },
-          ],
-          index: 1,
-        },
-      })
-    );
+    expect(score.getAttribute("href")).toBe("/score/Sonata.pdf");
   });
 });
