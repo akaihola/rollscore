@@ -206,12 +206,14 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   );
   let sysPage = null; // last page the selector was seated on (reset on page change)
 
-  const overlay = createSystemOverlay(
-    strip,
-    systemsRaw.map((_, i) => pageStripBoxes(i + 1, stripWidth())),
-    { opacity: tuning.overlayOpacity, fadeMs: tuning.overlayFadeMs }
-  );
+  // The overlay positions boxes in page-relative % (resize-independent) and nests
+  // them per page so they inherit the crop transform; pass raw canvas boxes + dims.
+  const overlay = createSystemOverlay(strip, systemsRaw, extDims, {
+    opacity: tuning.overlayOpacity,
+    fadeMs: tuning.overlayFadeMs,
+  });
   let overlayOn = false;
+  applyCropMode(strip, extDims, cropMode); // re-apply now the overlay containers exist
 
   // ---- Gaze loop ----------------------------------------------------------
   const controller = createGazeController(
@@ -462,7 +464,17 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     toggleSystemOverlay: () => {
       overlayOn = !overlayOn;
       overlay.setVisible(overlayOn);
-      if (!overlayOn) overlay.setActive(null, null);
+      if (overlayOn) {
+        // Light the current page's first system immediately so "is it registered?"
+        // is answerable without engaging gaze; the gaze loop then crossfades the
+        // active system as you read.
+        overlay.setActive(currentPage() - 1, 0);
+        status.textContent =
+          "Overlay: on — current system highlighted; start gaze (Space) and read to see it track";
+      } else {
+        overlay.setActive(null, null);
+        status.textContent = "Overlay: off";
+      }
     },
   });
 
