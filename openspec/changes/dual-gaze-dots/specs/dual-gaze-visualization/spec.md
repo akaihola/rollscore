@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
-### Requirement: Smoothed gaze point display
-The system SHALL render the smoothed gaze point (median + EMA filtered x and y) as a red dot in the camera preview area.
+### Requirement: Control-path gaze point display
+The system SHALL render the gaze point as a red dot using the exact coordinates fed into the scrolling algorithm: raw x-coordinate and smoothed (median + EMA) y-coordinate.
 
-#### Scenario: Smoothed dot appears during gaze
+#### Scenario: Control-path dot appears during gaze
 - **WHEN** WebGazer is active and tracking the user's eyes
-- **THEN** a red dot appears at the smoothed gaze location (x, y after median + EMA filtering)
+- **THEN** a red dot appears at (raw x, smoothed y)—the point the controller uses for scrolling decisions
 
-#### Scenario: Smoothed dot updates every frame
+#### Scenario: Control-path dot updates every frame
 - **WHEN** a new gaze sample arrives from WebGazer
-- **THEN** the red dot immediately moves to reflect the smoothed location
+- **THEN** the red dot immediately moves to reflect the raw x and smoothed y, showing the controller's input
 
 ### Requirement: Raw gaze point display
 The system SHALL render the raw unsmoothed gaze point from WebGazer as a smaller light gray dot in the camera preview area, positioned at the same location as the smoothed dot.
@@ -22,16 +22,16 @@ The system SHALL render the raw unsmoothed gaze point from WebGazer as a smaller
 - **WHEN** a new gaze sample arrives from WebGazer
 - **THEN** the gray dot immediately moves to the raw (x, y) location, without smoothing
 
-### Requirement: Dual dots move independently
-The system SHALL allow both the red (smoothed) and gray (raw) dots to move independently, demonstrating the lag and damping introduced by the smoothing filter.
+### Requirement: Dots reveal smoothing effect
+The system SHALL allow both dots to move, demonstrating the smoothing filter's impact on the y-axis while keeping x raw (as the control algorithm does).
 
-#### Scenario: Raw dot leads smoothed dot on rapid movements
+#### Scenario: Y-axis smoothing visible on rapid downward movement
 - **WHEN** the user's gaze moves rapidly downward
-- **THEN** the gray dot reaches the new position first, and the red dot follows with a delayed, damped motion
+- **THEN** the gray dot reaches the new y-position first, and the red dot follows with a delayed, damped motion on the y-axis
 
-#### Scenario: Jitter visible in raw dot only
+#### Scenario: Y-jitter damped in control-path dot, X remains raw
 - **WHEN** the user holds gaze steady on one spot
-- **THEN** the gray dot jitters with WebGazer's frame-to-frame noise, while the red dot remains relatively stable
+- **THEN** the gray dot jitters in all directions (raw WebGazer noise), while the red dot jitters horizontally (raw x) but remains stable vertically (smoothed y)
 
 ### Requirement: Visual distinction
 The system SHALL differentiate raw and smoothed dots by size, color, and opacity to avoid confusion.

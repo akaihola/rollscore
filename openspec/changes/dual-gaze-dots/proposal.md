@@ -4,8 +4,8 @@ During gaze-control tuning, it's unclear how much the smoothing filter (median +
 
 ## What Changes
 
-- The main red gaze dot (currently showing raw location) will represent the **smoothed** gaze point (median + EMA applied to both x and y).
-- A smaller light gray dot will appear alongside it to show the **raw unsmoothed** location from WebGazer, jittering at full frame rate.
+- The main red gaze dot will represent **exactly what the scrolling algorithm sees**: raw x-coordinate (for on-music gating) + smoothed y-coordinate (for velocity estimation and scroll control).
+- A smaller light gray dot will show the completely **raw unsmoothed** location from WebGazer, jittering at full frame rate.
 - Both dots update every frame and inherit the same visual treatment (attached to the camera preview area).
 
 ## Capabilities

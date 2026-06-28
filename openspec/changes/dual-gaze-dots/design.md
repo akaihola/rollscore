@@ -22,11 +22,11 @@ The `createGazeController` already instantiates a smoother and computes `smoothe
 
 *Alternative considered*: Instantiate a separate display smoother—rejected because it duplicates the filter logic and decouples display from control logic.
 
-**2. Smoothing both x and y for display**
+**2. Red dot shows control-path data (raw x + smoothed y)**
 
-The control logic only smooths y (used for velocity estimation). For the display dots, we apply the same smoother to both x and y for consistency and clarity. This shows the user "what if we smooth both axes"—useful context even if the controller doesn't use smoothed x for scrolling.
+The red dot displays exactly what the scrolling algorithm receives: raw x (for the on-music gate and system selector) and smoothed y (for velocity estimation and scroll control). This honest representation helps users understand what the controller "sees" without introducing asymmetry or speculation about x smoothing.
 
-*Alternative considered*: Show raw x and smoothed y—rejected because it's confusing (asymmetric) and the proposal explicitly asks for smoothed x.
+The gray dot shows completely raw WebGazer output for comparison. Investigating x smoothing can be done separately if UX gains justify it.
 
 **3. Dot rendering**
 
@@ -41,15 +41,15 @@ The controller's public API (`setParams`, `update`) changes only in return value
 
 ## Risks / Trade-offs
 
-**Risk**: The x-smoother sees rapid horizontal eye movements (saccades) that the real controller ignores. Showing a smoothed x might create a false impression of what the controller "sees" for on-music gating.
+**Risk**: Adding smoothed y to the controller's return object. The controller already computes it; we just expose it.
 
-*Mitigation*: Keep the red dot (smoothed) at the true control location; use the gray dot (raw) as a reference. In documentation, clarify that x smoothing is visualization-only; scrolling uses raw x.
+*Mitigation*: The return object is already `{scrollTop, state}`. We extend it to `{scrollTop, state, smoothedY, rawX, rawY}`. Callers ignore what they don't need. Minimal churn (two locations: `main.js` frame loop, test files).
 
-**Risk**: Adding smoothed values to the controller's return object bloats it. If many callers exist, this is a minor churn.
+**Risk**: The gray dot's position on raw x might be confusing—on-music gating uses this x value, but the gate also has a confidence threshold, so an apparently "off-music" raw x might still gate as readable if confidence is high.
 
-*Mitigation*: The return object is already `{scrollTop, state}`. We extend it to `{scrollTop, state, smoothedX, smoothedY, rawX, rawY}`. Callers ignore what they don't need. Minimal churn (two locations: `main.js` frame loop, test files).
+*Mitigation*: The visual distinction (red = control data, gray = raw input) is clear enough. The system behavior remains unchanged; this is observation-only.
 
 ## Trade-offs
 
-- Clarity vs. accuracy: Showing smoothed x is not what the controller uses, but it's clearer for the user to see both axes smoothed uniformly.
-- Simplicity vs. customization: Dot appearance (size, color, opacity) is hard-coded, not tunable. This is intentional to avoid UI clutter.
+- Transparency: The red dot now shows exactly what the controller uses (no speculation or asymmetry).
+- Future investigation: X smoothing as a UX improvement is deferred; can be explored separately with evidence from this visualization.
