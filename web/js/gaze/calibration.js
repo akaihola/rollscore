@@ -39,21 +39,43 @@ export function applyRecenter(y, offset) {
 }
 
 /**
- * Extract WebGazer's trained model as a JSON-serializable blob suitable for
- * `PUT /api/calibration`. Serializes via the regression's own `getData()` →
- * `[eyeFeatures, screenX, screenY]` arrays; round-tripped through
- * `/api/calibration` and restored via `setData()` after `begin()` on the next
- * load. Returns null when the model holds no usable training data.
+ * Resolve the current viewport orientation.
+ * @param {(q: string) => {matches: boolean}} [matchFn] - injectable for testing
+ * @returns {"portrait" | "landscape"}
+ */
+export function currentOrientation(matchFn = globalThis.matchMedia?.bind(globalThis)) {
+  if (!matchFn) return "landscape";
+  return matchFn("(orientation: portrait)").matches ? "portrait" : "landscape";
+}
+
+/**
+ * True iff the calibration entry's recorded display scale matches `dpr`.
+ * @param {{blob: any, dpr: number|null}} entry
+ * @param {number} dpr - current devicePixelRatio
+ * @returns {boolean}
+ */
+export function isCalibrationValidForScale(entry, dpr) {
+  return entry?.dpr === dpr;
+}
+
+/**
+ * Extract WebGazer's trained model as a JSON-serializable entry `{blob, dpr}`
+ * suitable for `PUT /api/calibration`. The `blob` is the regression's
+ * `getData()` result; `dpr` is the training-time `devicePixelRatio` so a later
+ * zoom change can be detected as invalidating. Returns null when the model holds
+ * no usable training data.
  *
  * @param {any} [regression] - WebGazer regression (defaults to `getRegression()[0]`)
- * @returns {any|null} the getData() blob, or null if no points have been trained
+ * @param {number} [dpr] - training-time scale (defaults to `devicePixelRatio`)
+ * @returns {{blob: any, dpr: number}|null}
  */
 export function serializeCalibration(
-  regression = globalThis.webgazer?.getRegression?.()[0]
+  regression = globalThis.webgazer?.getRegression?.()[0],
+  dpr = globalThis.devicePixelRatio ?? 1
 ) {
   const blob = regression?.getData?.();
   if (!blob || !blob.length) return null;
-  return blob;
+  return { blob, dpr };
 }
 
 /**

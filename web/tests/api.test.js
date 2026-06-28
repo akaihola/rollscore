@@ -100,26 +100,47 @@ describe("api client", () => {
     });
   });
 
-  it("getCalibration fetches /api/calibration", async () => {
-    const blob = { data: [[0.1, 0.2]] };
-    fetch.mockResolvedValue({ ok: true, json: async () => blob });
+  it("getCalibration fetches /api/calibration with default landscape orientation", async () => {
+    const entry = { blob: [{ data: [0.1] }], dpr: 2 };
+    fetch.mockResolvedValue({ ok: true, json: async () => entry });
 
     const result = await getCalibration();
 
-    expect(fetch).toHaveBeenCalledWith("/api/calibration");
-    expect(result).toEqual(blob);
+    expect(fetch).toHaveBeenCalledWith("/api/calibration?orientation=landscape");
+    expect(result).toEqual(entry);
   });
 
-  it("putCalibration PUTs the blob as JSON", async () => {
+  it("getCalibration passes the given orientation", async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => null });
+
+    await getCalibration("portrait");
+
+    expect(fetch).toHaveBeenCalledWith("/api/calibration?orientation=portrait");
+  });
+
+  it("putCalibration PUTs the entry as JSON with default landscape orientation", async () => {
     fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
-    const blob = { data: [[0.3, 0.4]] };
+    const entry = { blob: [{ data: [0.3] }], dpr: 1.5 };
 
-    await putCalibration(blob);
+    await putCalibration(entry);
 
-    expect(fetch).toHaveBeenCalledWith("/api/calibration", {
+    expect(fetch).toHaveBeenCalledWith("/api/calibration?orientation=landscape", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(blob),
+      body: JSON.stringify(entry),
+    });
+  });
+
+  it("putCalibration passes the given orientation", async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    const entry = { blob: [], dpr: 1 };
+
+    await putCalibration(entry, "portrait");
+
+    expect(fetch).toHaveBeenCalledWith("/api/calibration?orientation=portrait", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(entry),
     });
   });
 });

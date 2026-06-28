@@ -13,7 +13,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -122,12 +122,19 @@ def create_app(
         return {"ok": True}
 
     @app.get("/api/calibration")
-    def get_calibration(request: Request) -> Any:
-        return get_store(request).get_calibration()
+    def get_calibration(
+        request: Request, orientation: str = Query("landscape")
+    ) -> Any:
+        return get_store(request).get_calibration(orientation)
 
     @app.put("/api/calibration")
-    def put_calibration(body: Any = Body(...), *, request: Request) -> dict:
-        get_store(request).set_calibration(body)
+    def put_calibration(
+        body: Any = Body(...),
+        *,
+        request: Request,
+        orientation: str = Query("landscape"),
+    ) -> dict:
+        get_store(request).set_calibration(orientation, body)
         return {"ok": True}
 
     @app.get("/")

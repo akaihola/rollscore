@@ -35,11 +35,33 @@ def test_tuning_defaults_cover_every_controller_param(tmp_path):
 
 def test_calibration_roundtrip(tmp_path):
     store = StateStore(tmp_path / "state.json")
-    assert store.get_calibration() is None
-    blob = {"weights": [1, 2, 3], "n": 9}
-    store.set_calibration(blob)
+    assert store.get_calibration("landscape") is None
+    entry = {"blob": [{"weights": [1, 2, 3]}], "dpr": 2.0}
+    store.set_calibration("landscape", entry)
     store2 = StateStore(tmp_path / "state.json")
-    assert store2.get_calibration() == blob
+    assert store2.get_calibration("landscape") == entry
+    assert store2.get_calibration("portrait") is None
+
+
+def test_calibration_orientation_isolation(tmp_path):
+    store = StateStore(tmp_path / "state.json")
+    land = {"blob": [{"a": 1}], "dpr": 1.0}
+    port = {"blob": [{"b": 2}], "dpr": 1.0}
+    store.set_calibration("landscape", land)
+    store.set_calibration("portrait", port)
+    assert store.get_calibration("landscape") == land
+    assert store.get_calibration("portrait") == port
+
+
+def test_calibration_legacy_migration(tmp_path):
+    path = tmp_path / "state.json"
+    import json
+    legacy_blob = [{"eyes": {}, "screenPos": [400, 300]}]
+    path.write_text(json.dumps({"calibration": legacy_blob}))
+    store = StateStore(path)
+    entry = store.get_calibration("landscape")
+    assert entry == {"blob": legacy_blob, "dpr": None}
+    assert store.get_calibration("portrait") is None
 
 
 def test_tolerates_corrupt_file(tmp_path):
