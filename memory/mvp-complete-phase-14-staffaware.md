@@ -57,5 +57,16 @@ Tasks §3–7 + §8.2–8.3 complete on branch `phase-14-detection` (not yet com
 
 **ONLY REMAINING: task 8.1** — manual webcam run against La Maja to confirm feel + tune (needs the user; agent can't drive a webcam). Then commit, merge `--no-ff` to main, and `/opsx:archive` the change.
 
+## Phase 14 — COMPLETE & ARCHIVED (2026-06-28)
+
+33/33 done; user-confirmed webcam run ("good"). Change archived to `openspec/changes/archive/2026-06-28-phase-14-music-aware-scrolling/`; delta specs synced into baseline (`openspec/specs/staff-system-detection/spec.md`, `system-aware-scrolling/spec.md`). Branch `phase-14-detection` **still not merged to main** — merge `--no-ff` when ready. Commits NOT yet pushed (push from `akaihola@atom`).
+
+**Three bugs found & fixed during the 8.1 webcam run** (overlay was untested in a real browser before this):
+- Debug overlay invisible: drawn at `z-index:-1` behind opaque page PNGs (renders are opaque white, not transparent). Moved in front at low opacity. Toggle `o` now also reports state + lights the current system immediately (commit 8a191c8).
+- Overlay misaligned under crop (`z`): boxes lived in a flat full-page layer ignoring the per-page crop CSS transform. Now **nested per `.page-wrapper`, positioned in page-relative %**; `applyCropMode` applies the identical transform to the container (8a191c8). Also made boxes resize-independent.
+- System tracking stalled at last system of page 1: controller was fed only the current page's boxes → forward-only selector clamped to that page. Now fed **one continuous cross-page stack** (`allStripBoxes` in main.js), selector re-seated to scroll position after external scroll via `lastAppliedScroll` (commit 65e01b3, verified p1→p2→p3 live via CDP).
+
+**DEFERRED: two minor bugs** the user will describe in a follow-up session (not yet characterized). Start that session with `/opsx:explore` → `/opsx:propose`.
+
 ## Tooling
 **OpenSpec adopted** (2026-06-27) for spec-driven design. Use `/opsx:propose <change>` for Phase 14+.
