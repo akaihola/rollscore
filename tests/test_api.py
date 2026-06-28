@@ -97,6 +97,28 @@ def test_page_dimensions_endpoint(client):
     assert dims == [{"width": 2160, "height": round(792 * 2160 / 612), "zoom": 1.0, "trOffset": None}]
 
 
+# --- Task 3: /systems endpoint ----------------------------------------------
+
+def test_systems_endpoint(client):
+    r = client.get(f"/api/score/{SCORE_FILE}/systems")
+    assert r.status_code == 200
+    body = r.json()
+    # One per-page entry (1-page score); each is a list of boxes. The synthetic
+    # page is a plain rectangle with no staves, so detection yields an empty list.
+    assert body == [[]]
+
+
+def test_systems_unknown_score_404(client):
+    r = client.get("/api/score/Nonexistent.pdf/systems")
+    assert r.status_code == 404
+
+
+def test_systems_no_source_503():
+    client = TestClient(create_app())  # no data source configured
+    r = client.get(f"/api/score/{SCORE_FILE}/systems")
+    assert r.status_code == 503
+
+
 # --- Task 6.3: resume + tuning ----------------------------------------------
 
 def test_resume_round_trip(client):
