@@ -28,4 +28,4 @@
 ## 5. Documentation and Commits
 
 - [x] 5.1 Update code comments in `gaze/control.js` and `main.js` to explain the dual-dot visualization
-- [ ] 5.2 Commit changes with a message referencing the dual-gaze-dots change
+- [x] 5.2 Commit changes with a message referencing the dual-gaze-dots change
