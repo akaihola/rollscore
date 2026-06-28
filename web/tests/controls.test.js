@@ -16,6 +16,7 @@ function spies() {
     captureCalibration: vi.fn(),
     toggleTuning: vi.fn(),
     toggleCrop: vi.fn(),
+    calibrateAt: vi.fn(),
   };
 }
 
@@ -110,7 +111,7 @@ describe("bindControls — tap zones", () => {
   let handlers, el;
 
   /** Click `el` at the fractional position (fx, fy) of a 300×600 box. */
-  function clickAt(fx, fy) {
+  function clickAt(fx, fy, opts = {}) {
     el.getBoundingClientRect = () => ({
       left: 0, top: 0, width: 300, height: 600, right: 300, bottom: 600,
     });
@@ -119,6 +120,7 @@ describe("bindControls — tap zones", () => {
         bubbles: true,
         clientX: fx * 300,
         clientY: fy * 600,
+        ...opts,
       })
     );
   }
@@ -149,5 +151,17 @@ describe("bindControls — tap zones", () => {
   it("a click in a corner recenters", () => {
     clickAt(0.05, 0.05);
     expect(handlers.recenter).toHaveBeenCalledTimes(1);
+  });
+
+  it("Shift+click records a calibration point at the click location, not a tap action", () => {
+    clickAt(0.5, 0.95, { shiftKey: true }); // a spot that would otherwise nudge forward
+    expect(handlers.calibrateAt).toHaveBeenCalledWith(150, 570);
+    expect(handlers.nudge).not.toHaveBeenCalled();
+  });
+
+  it("a plain click does its tap action and records no calibration point", () => {
+    clickAt(0.5, 0.5);
+    expect(handlers.togglePause).toHaveBeenCalledTimes(1);
+    expect(handlers.calibrateAt).not.toHaveBeenCalled();
   });
 });

@@ -402,7 +402,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   if (source && !status.textContent) {
     status.textContent = fake
       ? "fake gaze — press Space to start"
-      : "calibrate: look at the cursor, press g (repeat across the screen) · Space to start";
+      : "calibrate: look at the cursor, press g (or Shift+click where you look; repeat across the screen) · Space to start";
   }
   if (rafId === null) rafId = requestAnimationFrame(frame);
 
@@ -418,13 +418,17 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   };
   window.addEventListener("mousemove", onMove);
 
-  function captureCalibration() {
+  function recordCalibrationAt(x, y) {
     const wg = window.webgazer;
     if (!wg?.recordScreenPosition) return;
-    wg.recordScreenPosition(cursorX, cursorY, "click");
+    wg.recordScreenPosition(x, y, "click");
     const blob = serializeCalibration();
     if (blob) putCalibration(blob).catch(() => {});
-    status.textContent = "calibration point added — look at the cursor, press g";
+    status.textContent = "calibration point added — press g at the cursor or Shift+click where you look";
+  }
+
+  function captureCalibration() {
+    recordCalibrationAt(cursorX, cursorY);
   }
 
   function currentPage() {
@@ -490,6 +494,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     },
     startCalibration,
     captureCalibration,
+    calibrateAt: recordCalibrationAt,
     toggleTuning: () => {
       tuningPanel.hidden = !tuningPanel.hidden;
     },

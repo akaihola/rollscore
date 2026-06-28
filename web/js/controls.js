@@ -10,7 +10,9 @@
  * Handlers (all optional): `togglePause`, `recenter`, `nudge(delta)` where delta
  * is +1 (forward) / -1 (back), `prevPiece`, `nextPiece`, `backToChooser`,
  * `toggleAnnotations`, `startCalibration`, `captureCalibration` (record the
- * cursor position as a gaze training point — see the reader), `toggleTuning`
+ * cursor position as a gaze training point — see the reader),
+ * `calibrateAt(x, y)` (record a gaze training point at a Shift+click location),
+ * `toggleTuning`
  * (show/hide the dev tuning panel), `toggleCrop` (switch between forScore's
  * zoomed/cropped view and the full-page view), `toggleSystemOverlay` (show/hide
  * the Phase 14 active-system debug shading).
@@ -65,6 +67,11 @@ export function bindControls(el, handlers) {
   };
 
   const onClick = (e) => {
+    // Shift+click records a calibration point where you clicked, not a tap action.
+    if (e.shiftKey) {
+      handlers.calibrateAt?.(e.clientX, e.clientY);
+      return;
+    }
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     tapAction((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, handlers);
