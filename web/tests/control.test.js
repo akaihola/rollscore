@@ -275,20 +275,6 @@ describe("createSystemController", () => {
     expect(frames).toBeLessThanOrEqual(8);
   });
 
-  it("recovers from a stale active after a manual scroll jump (freeze regression)", () => {
-    // Selector is at system 0 (its sweep-end is at top-topMargin = 50-20 = 30).
-    // The scroll has jumped to 800 (past system 0 and 1's ranges entirely).
-    // The controller must auto-advance rather than freeze.
-    const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
-    // Don't advance the selector — leave it at system 0 (stale).
-    const jumpedView = { ...clipView, scrollTop: 800 }; // past both systems
-    const r = c.update({ boxes: clipBoxes, fx: 0, reading: false, ...jumpedView });
-    // After recovery the active must be system 1 (the last), not system 0.
-    expect(r.active).toBe(1);
-    // And scroll should hold (both systems are behind; last system's snap is also behind).
-    expect(r.scrollTop).toBeGreaterThanOrEqual(800);
-  });
-
   it("snap reaches snapStart even when reading is false on the following frames (freeze regression)", () => {
     const c = createSystemController({ systemTopMargin: 20, maxStepPerFrame: 8, snapStepPerFrame: 50 });
     const r1 = advanceToSystem1(c);

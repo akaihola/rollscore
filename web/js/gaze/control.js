@@ -223,19 +223,8 @@ export function createSystemController(initialParams) {
     update({ boxes, fx, reading, viewportH, scrollTop, contentH }) {
       if (!boxes || boxes.length === 0) return null;
       const maxScroll = Math.max(0, contentH - viewportH);
-      let active = reading ? selector.update(fx, boxes.length) : selector.active();
+      const active = reading ? selector.update(fx, boxes.length) : selector.active();
       const topMargin = params.systemTopMargin ?? 0;
-
-      // Stale-active recovery: if the active system is entirely above the viewport
-      // (its bottom ≤ scrollTop — can happen after a manual scroll jump while gaze
-      // was paused), advance to the first system that is at least partially visible.
-      if (active < boxes.length - 1 && boxes[active].bottom <= scrollTop) {
-        let next = active + 1;
-        while (next < boxes.length - 1 && boxes[next].bottom <= scrollTop) next++;
-        selector.reset(next);
-        active = next;
-      }
-
       const box = boxes[active];
 
       // Snap baseline (ungated): pull the active system fully into view. `fx: 0`
