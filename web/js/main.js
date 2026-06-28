@@ -361,7 +361,8 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     paused = p;
     gazeBtn.textContent = `Gaze: ${p ? "off" : "on"}`;
     if (!p && !document.fullscreenElement) {
-      scroller.requestFullscreen?.().catch(() => {
+      // Use documentElement so body-appended overlays (dots, cal-dots, video) stay visible.
+      document.documentElement.requestFullscreen?.().catch(() => {
         status.textContent = "Fullscreen unavailable — gaze may be inaccurate";
       });
     }
