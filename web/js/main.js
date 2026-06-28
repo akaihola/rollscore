@@ -43,8 +43,6 @@ import {
   applyRecenter,
   computeRecenterOffset,
   runCalibration,
-  restoreCalibration,
-  serializeCalibration,
 } from "./gaze/calibration.js";
 import { bindControls } from "./controls.js";
 import { buildTuningPanel } from "./tuning.js";
@@ -399,13 +397,13 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
       source = createFakeGaze(scroller);
     } else {
       await loadWebgazer();
-      restoreCalibration(savedCal);
       source = new WebGazerGazeSource();
     }
     source.onSample((s) => {
       latestSample = s;
     });
     await source.start();
+    source.setCalibration?.(savedCal);
     // WebGazer's camera preview is fixed at the top-left and would cover the
     // toolbar buttons; drop it just below the toolbar.
     const videoBox = document.getElementById("webgazerVideoContainer");
@@ -437,7 +435,7 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     const wg = window.webgazer;
     if (!wg?.recordScreenPosition) return;
     wg.recordScreenPosition(x, y, "click");
-    const blob = serializeCalibration();
+    const blob = source?.getCalibration();
     if (blob) putCalibration(blob).catch(() => {});
     status.textContent = "calibration point added — press g at the cursor or Shift+click where you look";
   }
@@ -465,10 +463,11 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
     status.textContent = "Calibrating — click each dot";
     const handle = runCalibration({ document, webgazer: window.webgazer });
     calibration = handle;
-    const blob = await handle;
+    const completed = await handle;
     if (calibration === handle) calibration = null; // only the live one clears state
-    if (blob) {
-      putCalibration(blob).catch(() => {});
+    if (completed) {
+      const blob = source?.getCalibration();
+      if (blob) putCalibration(blob).catch(() => {});
       status.textContent = "Calibrated";
     }
   }
@@ -533,6 +532,8 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
   teardown = () => {
     save.flush();
     flushTuning.flush();
+    const calBlob = source?.getCalibration?.();
+    if (calBlob) putCalibration(calBlob).catch(() => {});
     cancelAnimationFrame(rafId);
     source?.stop();
     unbind();
