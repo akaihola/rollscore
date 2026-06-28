@@ -199,7 +199,13 @@ export function stepTowardTarget(scrollTop, target, { maxStepPerFrame, maxScroll
  * across the music column, a `reading` gate, and the view geometry; it returns
  * `{scrollTop, active}` or **null** when there are no boxes — the signal for the
  * caller to route this frame through the vertical-gaze follower (design D5).
- * While not reading it holds position (no advance, no scroll).
+ *
+ * Motion is split in two: an **ungated snap baseline** that always pulls the
+ * active system fully into view (forward toward its `snapStart`, at the dedicated
+ * `snapStepPerFrame` budget) so a half-clipped line cannot freeze the scroll when
+ * the reading gate is false; and a **reading-gated raise** that, once the system
+ * is fully visible, interpolates further toward the sweep-end top-align at the
+ * gentle `maxStepPerFrame`. The selector only advances while reading.
  */
 export function createSystemController(initialParams) {
   let params = { ...initialParams };
@@ -216,18 +222,42 @@ export function createSystemController(initialParams) {
     },
     update({ boxes, fx, reading, viewportH, scrollTop, contentH }) {
       if (!boxes || boxes.length === 0) return null;
-      if (!reading) return { scrollTop, active: selector.active() };
-      const active = selector.update(fx, boxes.length);
-      const target = systemScrollTarget(boxes[active], {
-        viewportH,
-        topMargin: params.systemTopMargin ?? 0,
-        fx,
-      });
       const maxScroll = Math.max(0, contentH - viewportH);
-      const next = stepTowardTarget(scrollTop, target, {
-        maxStepPerFrame: params.maxStepPerFrame,
+      let active = reading ? selector.update(fx, boxes.length) : selector.active();
+      const topMargin = params.systemTopMargin ?? 0;
+
+      // Stale-active recovery: if the active system is entirely above the viewport
+      // (its bottom ≤ scrollTop — can happen after a manual scroll jump while gaze
+      // was paused), advance to the first system that is at least partially visible.
+      if (active < boxes.length - 1 && boxes[active].bottom <= scrollTop) {
+        let next = active + 1;
+        while (next < boxes.length - 1 && boxes[next].bottom <= scrollTop) next++;
+        selector.reset(next);
+        active = next;
+      }
+
+      const box = boxes[active];
+
+      // Snap baseline (ungated): pull the active system fully into view. `fx: 0`
+      // gives its snapStart (top-aligned for a system taller than the viewport);
+      // forward-only, at the snap budget — this is what fixes the freeze when the
+      // reading gate is false (gaze resting left of the music column).
+      const snapTarget = systemScrollTarget(box, { viewportH, topMargin, fx: 0 });
+      let next = stepTowardTarget(scrollTop, snapTarget, {
+        maxStepPerFrame: params.snapStepPerFrame,
         maxScroll,
       });
+
+      // Reading raise (gated): once fully visible, interpolate toward the
+      // fx-target at the gentle reading-velocity cap.
+      const snapClamped = Math.max(0, Math.min(maxScroll, snapTarget));
+      if (reading && next >= snapClamped) {
+        const target = systemScrollTarget(box, { viewportH, topMargin, fx });
+        next = stepTowardTarget(next, target, {
+          maxStepPerFrame: params.maxStepPerFrame,
+          maxScroll,
+        });
+      }
       return { scrollTop: next, active };
     },
   };

@@ -30,6 +30,7 @@ export const TUNING_FIELDS = [
   { key: "columnX1", min: 0.5, max: 1, step: 0.01 }, // right edge of the music column (fraction)
   { key: "minConfidence", min: 0, max: 1, step: 0.05 }, // gaze-confidence gate
   { key: "systemTopMargin", min: 0, max: 120, step: 2 }, // px above active system at sweep end
+  { key: "snapStepPerFrame", min: 0, max: 120, step: 2 }, // px/frame snap budget to bring the active system fully into view
   { key: "overlayFadeMs", min: 0, max: 1000, step: 25 }, // debug-overlay crossfade duration
   { key: "overlayOpacity", min: 0, max: 0.6, step: 0.02 }, // debug-overlay shading opacity
 ];

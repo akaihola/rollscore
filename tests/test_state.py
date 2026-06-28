@@ -27,8 +27,8 @@ def test_tuning_defaults_cover_every_controller_param(tmp_path):
     store = StateStore(tmp_path / "state.json")
     t = store.get_tuning()
     required = {
-        "setpoint", "deadzone", "maxStepPerFrame", "coastMs", "maxVelocity",
-        "medianWindow", "alpha", "columnX0", "columnX1", "minConfidence",
+        "setpoint", "deadzone", "maxStepPerFrame", "snapStepPerFrame", "coastMs",
+        "maxVelocity", "medianWindow", "alpha", "columnX0", "columnX1", "minConfidence",
     }
     assert required <= set(t), f"missing tuning defaults: {required - set(t)}"
 

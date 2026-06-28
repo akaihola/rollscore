@@ -199,13 +199,26 @@ async function openReader({ file, page, pieces = [], setlist = null, initialCrop
 
   function pageStripBoxes(pageNum, w) {
     const boxes = systemsRaw[pageNum - 1] || [];
-    const scale = w / (extDims[pageNum - 1]?.width || 1);
+    const dim = extDims[pageNum - 1] || { width: 1, height: 1 };
+    const scale = w / (dim.width || 1);
     const offset = pageToScroll(extDims, w, pageNum);
+    // Match applyCropMode: in crop mode the page img (and overlay) is transformed
+    // by `translate(tx%, ty%) scale(zoom)` about its top-left, so the controller's
+    // boxes must be too — otherwise the snap targets the *uncropped* position and
+    // leaves the zoomed system clipped below the viewport. A point maps to
+    // `T + zoom*point`; both axes' px offset reduce to `-0.8*trOffset*w/612` (the
+    // width/height factor in ty% cancels against the page's scaled height).
+    const { zoom = 1, trOffset = null } = dim;
+    const cropped = cropMode && (zoom !== 1 || trOffset);
+    const z = cropped ? zoom : 1;
+    const [ox, oy] = cropped && trOffset ? trOffset : [0, 0];
+    const tx = (-0.8 * ox * w) / 612;
+    const ty = (-0.8 * oy * w) / 612;
     return boxes.map((b) => ({
-      top: offset + b.top * scale,
-      bottom: offset + b.bottom * scale,
-      left: b.left * scale,
-      right: b.right * scale,
+      top: offset + ty + z * b.top * scale,
+      bottom: offset + ty + z * b.bottom * scale,
+      left: tx + z * b.left * scale,
+      right: tx + z * b.right * scale,
     }));
   }
 
