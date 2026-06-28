@@ -4,7 +4,14 @@ import {
   applyRecenter,
   computeRecenterOffset,
   runCalibration,
+  serializeCalibration,
+  restoreCalibration,
 } from "../js/gaze/calibration.js";
+
+function makeReg(data) {
+  let _data = data;
+  return { getData: () => _data, setData: vi.fn((d) => { _data = d; }) };
+}
 
 describe("computeRecenterOffset", () => {
   it("is the signed gap from raw gaze to the reference line", () => {
@@ -85,5 +92,47 @@ describe("runCalibration", () => {
     await promise;
     expect(() => promise.cancel()).not.toThrow();
     expect(document.querySelectorAll(".cal-dot").length).toBe(0);
+  });
+});
+
+// Real getData() shape: array of {eyes, screenPos, type} objects (empty = [])
+const FAKE_POINT = { eyes: {}, screenPos: [400, 300], type: "click" };
+
+describe("serializeCalibration", () => {
+  it("returns getData() blob for a non-empty model", () => {
+    const blob = [FAKE_POINT];
+    const reg = makeReg(blob);
+    expect(serializeCalibration(reg)).toBe(blob);
+  });
+
+  it("returns null when getData() has no points (empty array)", () => {
+    expect(serializeCalibration(makeReg([]))).toBeNull();
+  });
+
+  it("returns null when regression is missing", () => {
+    expect(serializeCalibration(undefined)).toBeNull();
+  });
+});
+
+describe("restoreCalibration", () => {
+  it("calls setData with the blob", () => {
+    const blob = [FAKE_POINT];
+    const reg = makeReg([]);
+    restoreCalibration(blob, reg);
+    expect(reg.setData).toHaveBeenCalledWith(blob);
+  });
+
+  it("is a no-op for null blob", () => {
+    const reg = makeReg([]);
+    restoreCalibration(null, reg);
+    expect(reg.setData).not.toHaveBeenCalled();
+  });
+
+  it("round-trip: transfers training data from one regression to another", () => {
+    const blob = [FAKE_POINT];
+    const regA = makeReg(blob);
+    const regB = makeReg([]);
+    restoreCalibration(serializeCalibration(regA), regB);
+    expect(regB.setData).toHaveBeenCalledWith(blob);
   });
 });

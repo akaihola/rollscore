@@ -63,6 +63,48 @@ export class WebGazerGazeSource {
     });
   }
 
+  /**
+   * Return the current regression's training data blob, or null if the model is
+   * empty. The blob is suitable for `PUT /api/calibration` and can be restored
+   * via {@link setCalibration}.
+   * @returns {any|null}
+   */
+  getCalibration() {
+    const blob = this._wg.getRegression?.()?.[0]?.getData?.();
+    if (!blob || !blob.length) return null;
+    return blob;
+  }
+
+  /**
+   * Load a previously-saved calibration blob into the regression via `setData()`.
+   * A null blob is a no-op. Must be called after {@link start} so the regression
+   * exists.
+   *
+   * The blob's `eyes.*.patch.data` is a plain JS object `{0:v,1:v,...}` after a
+   * JSON round-trip (Uint8ClampedArray serializes that way). `setData` passes it
+   * to `new Uint8ClampedArray(patch.data)` which needs an array-like with `.length`
+   * — a plain object has no `.length`, so it produces an empty array and crashes
+   * `new ImageData(...)`. Convert each patch.data to a plain Array first.
+   * @param {any} blob
+   */
+  setCalibration(blob) {
+    if (blob == null) return;
+    const reg = this._wg.getRegression?.()?.[0];
+    if (!reg) return;
+    blob.forEach(entry => {
+      for (const side of ["left", "right"]) {
+        const eye = entry.eyes?.[side];
+        if (eye && eye.patch?.data && !ArrayBuffer.isView(eye.patch.data)) {
+          const n = eye.width * eye.height * 4;
+          const arr = new Array(n);
+          for (let i = 0; i < n; i++) arr[i] = eye.patch.data[i] ?? 0;
+          eye.patch.data = arr;
+        }
+      }
+    });
+    reg.setData?.(blob);
+  }
+
   /** End tracking and clear the listener. */
   stop() {
     this._wg.clearGazeListener();

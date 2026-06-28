@@ -40,32 +40,41 @@ export function applyRecenter(y, offset) {
 
 /**
  * Extract WebGazer's trained model as a JSON-serializable blob suitable for
- * `PUT /api/calibration`. WebGazer persists its data to `localStorage` under
- * `webgazerGlobalData`; that is the portable representation we round-trip.
+ * `PUT /api/calibration`. Serializes via the regression's own `getData()` →
+ * `[eyeFeatures, screenX, screenY]` arrays; round-tripped through
+ * `/api/calibration` and restored via `setData()` after `begin()` on the next
+ * load. Returns null when the model holds no usable training data.
  *
- * @param {any} [storage] - storage object (defaults to `localStorage`)
- * @returns {any|null} the parsed blob, or null if nothing has been trained
+ * @param {any} [regression] - WebGazer regression (defaults to `getRegression()[0]`)
+ * @returns {any|null} the getData() blob, or null if no points have been trained
  */
-export function serializeCalibration(storage = globalThis.localStorage) {
-  const raw = storage?.getItem?.("webgazerGlobalData");
-  return raw ? JSON.parse(raw) : null;
+export function serializeCalibration(
+  regression = globalThis.webgazer?.getRegression?.()[0]
+) {
+  const blob = regression?.getData?.();
+  if (!blob || !blob.length) return null;
+  return blob;
 }
 
 /**
- * Restore a previously-saved calibration blob into WebGazer's `localStorage`
- * slot. Call before `webgazer.begin()` so the regression loads the saved model.
+ * Restore a previously-saved calibration blob into WebGazer's regression via
+ * `setData()`. Must be called after `webgazer.begin()` — the regression does
+ * not exist until then. A null or missing blob is a no-op.
  *
- * @param {any} blob       - blob from {@link serializeCalibration}
- * @param {any} [storage]  - storage object (defaults to `localStorage`)
+ * @param {any} blob         - blob from {@link serializeCalibration}
+ * @param {any} [regression] - WebGazer regression (defaults to `getRegression()[0]`)
  */
-export function restoreCalibration(blob, storage = globalThis.localStorage) {
-  if (blob != null) storage?.setItem?.("webgazerGlobalData", JSON.stringify(blob));
+export function restoreCalibration(
+  blob,
+  regression = globalThis.webgazer?.getRegression?.()[0]
+) {
+  if (blob != null) regression?.setData?.(blob);
 }
 
 /**
  * Show the 9-point click-calibration overlay. Each dot must be clicked
  * `clicksPerPoint` times; WebGazer records each click as a training sample.
- * Resolves with the serialized calibration blob once every dot is done.
+ * Resolves with `true` once every dot is done, or `null` if cancelled.
  *
  * Each click is fed to the regression *explicitly* via `recordScreenPosition`
  * rather than relying on WebGazer's global click listener: the live reader
@@ -82,8 +91,8 @@ export function restoreCalibration(blob, storage = globalThis.localStorage) {
  * calibration — re-pressing `c` (which restarts) or leaving for the library — so
  * the dots never outlive the calibration that created them.
  *
- * @returns {Promise<any> & {cancel: () => void}} resolves with the calibration
- *   blob on completion, or `null` if cancelled; `.cancel()` aborts it.
+ * @returns {Promise<true|null> & {cancel: () => void}} resolves `true` on
+ *   completion, or `null` if cancelled; `.cancel()` aborts it.
  */
 export function runCalibration({
   document,
@@ -122,7 +131,7 @@ export function runCalibration({
             remaining -= 1;
             if (remaining === 0) {
               cleanup();
-              resolve(serializeCalibration());
+              resolve(true);
             }
           }
         });
