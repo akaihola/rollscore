@@ -1,5 +1,10 @@
 # Gaze-scroll Score Reader — MVP Implementation Plan
 
+> **Migrated to OpenSpec.** The shipped behavior now lives in
+> `openspec/specs/{score-rendering,setlist-navigation,reader-controls}/spec.md`
+> (gaze-specific capabilities under `openspec/specs/gaze-*` and `system-aware-scrolling`).
+> This plan is kept as historical reference.
+
 > **Phase status is tracked in `TASKS.md` at the repo root (on `main`)** — this doc
 > defines *what* each phase entails; `TASKS.md` records *which* phase is done. Keep
 > the two in sync as phases complete.

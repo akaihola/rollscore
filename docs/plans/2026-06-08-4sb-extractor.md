@@ -1,5 +1,8 @@
 # 4SB Archive Extractor Implementation Plan
 
+> **Migrated to OpenSpec.** The shipped behavior now lives in
+> `openspec/specs/archive-extraction/spec.md`. This plan is kept as historical reference.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** A standalone Python tool that extracts a ForScore `.4sb` Archive into original
