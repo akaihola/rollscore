@@ -1,5 +1,10 @@
 # Gaze-scroll score reader — design
 
+> **Migrated to OpenSpec.** The shipped behavior now lives in
+> `openspec/specs/{score-rendering,setlist-navigation,reader-controls}/spec.md`
+> (gaze-specific capabilities under `openspec/specs/gaze-*` and `system-aware-scrolling`).
+> This plan is kept as historical reference.
+
 Status: **design agreed** (2026-06-13). A requirements/design spec for an interactive,
 locally-run web app that reads an annotated forScore library and auto-scrolls the music
 based on webcam gaze tracking. Implementation not started.

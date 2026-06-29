@@ -1,5 +1,8 @@
 # Spec: Crop/full-page toggle (`z` key)
 
+> **Migrated to OpenSpec.** The shipped behavior now lives in
+> `openspec/specs/display-modes/spec.md`. This plan is kept as historical reference.
+
 ## Objective
 
 Add a `z` keyboard shortcut that toggles the reader between two display modes
