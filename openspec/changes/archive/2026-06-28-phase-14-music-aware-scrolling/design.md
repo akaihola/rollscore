@@ -19,6 +19,36 @@ The staff-detection approach is grounded in OMR research (`docs/notes/staff-syst
 for printed solo-piano pages the classic projection-profile pipeline is the easy,
 explainable baseline, with stable-paths as the escalation if curvature/skew defeats it.
 
+## Spike findings (2026-06-28)
+
+A detection spike de-risked the whole change before any controller work. The
+make-or-break question: *can a classic projection-profile pipeline detect grand-staff
+systems on real rendered pages well enough to drive system-aware scrolling — or is
+stable-paths / deep learning required?* Acceptance target: **4 La Maja y el Ruiseñor**
+(6 pages), rendered onto the standard 2160-px canvas. Detection lives in
+`rollscore/systems.py`. Full hypothesis/failure log: `docs/notes/staff-system-detection-spike.md`.
+
+**Verdict: GO — projection profile is sufficient, stable-paths not needed**, but only
+once two non-obvious steps are added beyond the textbook pipeline:
+
+- **Deskew.** La Maja p1 is tilted ~0.6°, which smears thin staff lines across rows and
+  collapses the projection profile (peak coverage 0.39 vs 0.84 on level pages). A
+  variance-maximizing angle search (±1.5° on a ¼-scale copy) levels the page; it rotates
+  only when `|best| ≥ 0.25°` so level pages stay pristine — an early grid that skipped 0.0°
+  needlessly rotated clean pages and broke them.
+- **System grouping by the barline/brace connector, not spacing or whitespace.** Inter-staff
+  *spacing* is non-bimodal on the title page (intra/inter gaps overlap), so largest-gap
+  pairing fails there. Instead a system boundary is decided by whether a vertical barline
+  spans the inter-staff gap (max ink-coverage ≥ 0.8) — within-system gaps span ~1.0, between
+  ~0.66, so a 0.8 threshold separates every page with no per-page tuning and handles mixed
+  N-staff layouts (La Maja is two-staff on most pages but three-staff where the piano texture
+  is rich — pp. 4–5 — and p5 mixes 3- and 2-staff systems).
+
+The spike also confirmed the **boxes legitimately overlap vertically** (p1: 1/2 separated
+by 11px, 2/3 and 3/4 overlap by 7–15px), driving D2's jagged per-column content divide and
+D4's overlap-robust, saccade-driven active-system selection. The detector matched
+hand-verified ground truth on all 6 pages.
+
 ## Goals / Non-Goals
 
 **Goals:**
