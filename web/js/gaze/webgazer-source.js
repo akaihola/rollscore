@@ -45,7 +45,11 @@ export class WebGazerGazeSource {
     if (this._faceMeshSolutionPath) {
       wg.params.faceMeshSolutionPath = this._faceMeshSolutionPath;
     }
-    wg.setRegression("ridge").setGazeListener((data, t) => {
+    // weightedRidge weights samples by √(1/age) (newest = full weight, oldest
+    // decays), so head-pose drift across a session doesn't vote forever. Shares
+    // the same getData/setData blob shape as plain ridge — persistence and
+    // previously saved blobs are unaffected.
+    wg.setRegression("weightedRidge").setGazeListener((data, t) => {
       if (!data || !this._cb) return;
       this._cb({ x: data.x, y: data.y, confidence: this._confidence, t });
     });

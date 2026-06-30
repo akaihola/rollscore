@@ -95,6 +95,56 @@ describe("runCalibration", () => {
     expect(() => promise.cancel()).not.toThrow();
     expect(document.querySelectorAll(".cal-dot").length).toBe(0);
   });
+
+  it("clears prior calibration data once, before any dot is clicked", async () => {
+    document.body.innerHTML = "";
+    const calls = [];
+    const clearData = vi.fn(() => calls.push("clear"));
+    const recordScreenPosition = vi.fn(() => calls.push("record"));
+    const promise = runCalibration({
+      document,
+      webgazer: { clearData, recordScreenPosition },
+      clicksPerPoint: 1,
+    });
+    document
+      .querySelectorAll(".cal-dot")
+      .forEach((dot) => dot.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await promise;
+    expect(clearData).toHaveBeenCalledTimes(1);
+    expect(calls[0]).toBe("clear"); // before any recordScreenPosition
+  });
+
+  it("does not require clearData to exist (g / Shift+click never call runCalibration)", async () => {
+    // g and Shift+click train via recordScreenPosition directly, bypassing
+    // runCalibration entirely, so they never trigger a clear.
+    document.body.innerHTML = "";
+    const recordScreenPosition = vi.fn();
+    const promise = runCalibration({
+      document,
+      webgazer: { recordScreenPosition }, // no clearData — must not throw
+      clicksPerPoint: 1,
+    });
+    document
+      .querySelectorAll(".cal-dot")
+      .forEach((dot) => dot.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await expect(promise).resolves.toBe(true);
+  });
+
+  it("abandoning a grid pass before any click leaves an empty model unpersisted", async () => {
+    // Starting the grid clears the regression; cancelling before a click means
+    // no point was ever recorded, so the existing empty-model rule keeps the
+    // previously saved calibration intact (serializeCalibration returns null).
+    document.body.innerHTML = "";
+    const reg = makeReg([]); // clearData empties it; no clicks land
+    const promise = runCalibration({
+      document,
+      webgazer: { clearData: vi.fn(), recordScreenPosition: vi.fn() },
+      clicksPerPoint: 1,
+    });
+    promise.cancel();
+    await promise;
+    expect(serializeCalibration(reg, 1)).toBeNull();
+  });
 });
 
 // Task 7.1: currentOrientation

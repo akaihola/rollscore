@@ -1,6 +1,6 @@
 ---
 name: gaze-calibration-degradation
-description: Why adding lots of Shift+click gaze calibration points eventually wrecks WebGazer accuracy — and the weightedRidge + clearData fix
+description: Why adding lots of Shift+click gaze calibration points eventually wrecks WebGazer accuracy — weightedRidge + clearData fix shipped 2026-06-30, only partial improvement reported
 metadata: 
   node_type: memory
   type: project
@@ -20,3 +20,7 @@ So every Shift+click over a session bakes in a slightly different head pose. The
 
 **Why:** addresses both confirmed causes (no-recency + no-clean-slate) without us reimplementing the regression math.
 **How to apply:** the Malta paper ([[ref-pmc7861241]]) is hardware+Kalman, not WebGazer — don't cite it as evidence here. Our cheap drift handler is the recenter offset (`computeRecenterOffset`); lean on it instead of re-clicking.
+
+**Shipped 2026-06-30** (OpenSpec change `gaze-calibration-recency`, both fixes applied): `setRegression("weightedRidge")` in `web/js/gaze/webgazer-source.js`, `webgazer.clearData()` added at the top of `runCalibration()` in `web/js/gaze/calibration.js` (fires only on a fresh 9-dot grid pass, not on `g`/Shift+click top-ups). Tests + full `vitest run` (146/146) green.
+
+**Manual webcam result:** user reports "a bit better" — not a full fix. Consistent with the design doc's accepted risk: if degradation is partly *spatial clustering* rather than pure temporal drift, recency weighting alone won't fully solve it. The deferred follow-up (per-region dedupe / replace-in-cell instead of append, scoped out of this change) is the next thing to try if degradation persists.

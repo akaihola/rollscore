@@ -103,6 +103,13 @@ export function restoreCalibration(
  * removes the mouse listeners (so an idle gaze isn't continuously retrained to
  * the cursor / last click), which would otherwise also silence calibration.
  *
+ * A fresh grid pass clears WebGazer's existing calibration data first, so the
+ * grid always trains a clean model — the recovery path when accumulated
+ * Shift+click/`g` points have drifted the model. `g` and Shift+click do not
+ * clear; they keep appending to the live model. `clearData()` also clears
+ * WebGazer's localforage, which we intentionally don't use (calibration
+ * persists via `/api/calibration`), so that side effect is harmless.
+ *
  * @param {Object} opts
  * @param {Document} opts.document
  * @param {any}     [opts.webgazer]        - WebGazer instance (defaults to global)
@@ -122,6 +129,7 @@ export function runCalibration({
   clicksPerPoint = 3,
   onProgress,
 } = {}) {
+  webgazer?.clearData?.();
   const xs = [0.1, 0.5, 0.9];
   const ys = [0.1, 0.5, 0.9];
 
