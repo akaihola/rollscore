@@ -12,3 +12,4 @@
 - [Worktree: symlink webgazer.js](feedback-worktree-webgazer-symlink.md) — vendor/webgazer.js is gitignored; always symlink it from main checkout into new worktrees or gaze fails at runtime
 - [Automated Page Turner paper](ref-pmc7861241.md) — eye-gaze + Kalman filter auto-scroll for musicians; 98.3% success; Tabone et al. 2020 (PMC7861241). NB: SMI RED500 *hardware* tracker, NOT WebGazer
 - [Gaze calibration degradation](gaze-calibration-degradation.md) — why lots of Shift+click points wreck WebGazer accuracy (unweighted ridge λ=1e-5, no head-pose norm, no recency); fix = weightedRidge + clearData() on recalibrate
+- [Gaze tracking alternatives](gaze-tracking-alternatives.md) — survey of OSS WebGazer alternatives w/ head-pose robustness; WebEyeTrack (TF.js, MIT) flagged as next prototype if weightedRidge fix isn't enough; no safe drop-in yet
