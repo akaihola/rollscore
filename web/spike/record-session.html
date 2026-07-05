@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Gaze-eval session recorder</title>
+<!--
+  Phase 0 recording harness of the automated gaze-evaluation plan
+  (WebEyeTrack docs/evaluation/2026-07-05-automated-gaze-eval-proposal.md).
+
+  Records a webcam video while a scripted target runs the session protocol
+  (lead-in, 9-point calibration, pursuit sweep, fixed-target head sweeps;
+  see record-scenes.js), logging per-frame ground truth on the same
+  performance.now() clock. Saves two files: video.webm + session.json.
+
+  Serve via `python3 web/spike/serve.py`, open
+  http://localhost:8000/spike/record-session.html in Chromium, go fullscreen
+  (F11), fill in the geometry form, and press Start.
+
+  Query params: ?fast=1 shortens every segment (smoke tests),
+  ?autostart=1 starts recording on load with the form's defaults.
+-->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #111; color: #eee;
+    font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #hud {
+    position: fixed; top: 8px; left: 8px; z-index: 30;
+    background: rgba(0,0,0,.65); padding: 10px 12px; border-radius: 8px;
+    max-width: 360px;
+  }
+  #hud h1 { font-size: 14px; margin: 0 0 6px; }
+  #hud .row { margin: 4px 0; }
+  #hud label { display: inline-block; margin-right: 8px; }
+  #hud input[type=text], #hud input[type=number] { width: 70px; font: inherit; }
+  #hud input#subject, #hud input#lighting { width: 130px; }
+  #hud button { font: inherit; margin: 2px 4px 2px 0; padding: 4px 8px; cursor: pointer; }
+  #hud.recording form, #hud.recording .prestart { display: none; }
+  #target {
+    position: fixed; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+    border-radius: 50%; background: #e33; border: 2px solid #fff; z-index: 20;
+    display: none; pointer-events: none;
+  }
+  #target::after { /* fixation point */
+    content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+    margin: -2px 0 0 -2px; border-radius: 50%; background: #fff;
+  }
+  #instruction {
+    position: fixed; left: 50%; top: 12%; transform: translateX(-50%);
+    z-index: 15; font-size: 22px; color: #cfe8ff; text-align: center;
+    max-width: 80vw; display: none; text-shadow: 0 1px 4px #000;
+  }
+  #progress {
+    position: fixed; left: 0; bottom: 0; height: 4px; width: 0;
+    background: #6cf; z-index: 15;
+  }
+  #preview {
+    position: fixed; right: 8px; bottom: 8px; width: 160px; z-index: 10;
+    border: 1px solid #444; border-radius: 4px; transform: scaleX(-1);
+  }
+</style>
+</head>
+<body>
+  <div id="hud">
+    <h1>Gaze-eval session recorder</h1>
+    <div class="row" id="phase">Phase: fill in geometry, then Start</div>
+    <form id="meta-form">
+      <div class="row"><label>Subject <input id="subject" type="text" value="anon"></label></div>
+      <div class="row">
+        <label>Screen <input id="screen-w-cm" type="number" step="0.1" placeholder="w cm"> ×
+          <input id="screen-h-cm" type="number" step="0.1" placeholder="h cm"> cm</label>
+      </div>
+      <div class="row"><label>Distance <input id="distance-cm" type="number" step="1" placeholder="cm"> cm</label></div>
+      <div class="row"><label>Camera <input id="camera-pos" type="text" value="top-center bezel" style="width:130px"></label></div>
+      <div class="row"><label>Lighting <input id="lighting" type="text" placeholder="e.g. daylight"></label></div>
+    </form>
+    <div class="row prestart" style="opacity:.7">
+      Go fullscreen (F11) first. Sit as you would at the instrument.
+      ~90 s total; instructions appear on screen.
+    </div>
+    <div class="row">
+      <button id="btn-start">Start recording</button>
+      <button id="btn-stop" disabled>Stop &amp; save</button>
+    </div>
+  </div>
+
+  <div id="target"></div>
+  <div id="instruction"></div>
+  <div id="progress"></div>
+  <video id="preview" muted playsinline></video>
+
+  <script type="module">
+  import { buildTimeline, timelineDuration, FAST_OVERRIDES } from "./record-scenes.js";
+
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const fast = params.get("fast") === "1";
+
+  const state = {
+    stream: null, recorder: null, chunks: [],
+    segments: null, segIndex: -1,
+    t0: null,               // performance.now() at recorder start
+    t0Epoch: null,
+    targets: [],            // {t, x, y, seg}
+    frames: [],             // {t, mt, ct, pf} from requestVideoFrameCallback
+    segLog: [],             // segment metadata + actual tStart/tEnd
+    resizes: [],
+    running: false,
+    mimeType: null,
+  };
+  // Smoke tests poll this for completion and inspect counters.
+  window.__record = state;
+
+  function pickMimeType() {
+    for (const mt of ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]) {
+      if (MediaRecorder.isTypeSupported(mt)) return mt;
+    }
+    return ""; // let the browser choose
+  }
+
+  async function start() {
+    $("btn-start").disabled = true;
+    $("phase").textContent = "Phase: requesting camera…";
+    try {
+      // 640×480 matches WebEyeTrack's deployment capture size.
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+        audio: false,
+      });
+    } catch (err) {
+      $("phase").textContent = "Phase: camera failed: " + err;
+      $("btn-start").disabled = false;
+      return;
+    }
+    // Capture now — getSettings() returns {} once the track is stopped.
+    state.videoSettings = state.stream.getVideoTracks()[0].getSettings();
+    const preview = $("preview");
+    preview.srcObject = state.stream;
+    await preview.play();
+
+    // Per-frame log: rVFC fires once per composited camera frame. captureTime
+    // (Chromium, camera streams) is on the performance.now() timeline — the
+    // primary alignment signal between session clock and video frames.
+    const onFrame = (now, meta) => {
+      if (state.running) {
+        state.frames.push({
+          t: Math.round(now * 10) / 10,
+          mt: meta.mediaTime,
+          ct: meta.captureTime !== undefined ? Math.round(meta.captureTime * 10) / 10 : null,
+          pf: meta.presentedFrames,
+        });
+      }
+      preview.requestVideoFrameCallback(onFrame);
+    };
+    preview.requestVideoFrameCallback(onFrame);
+
+    state.mimeType = pickMimeType();
+    state.recorder = new MediaRecorder(state.stream, {
+      ...(state.mimeType ? { mimeType: state.mimeType } : {}),
+      videoBitsPerSecond: 8_000_000, // generous: compression must not eat eye detail
+    });
+    state.recorder.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
+    state.recorder.onstop = save;
+    state.recorder.onstart = () => {
+      state.t0 = performance.now();
+      state.t0Epoch = Date.now();
+      state.running = true;
+      state.segments = buildTimeline(innerWidth, innerHeight, fast ? FAST_OVERRIDES : {});
+      state.segIndex = -1;
+      document.getElementById("hud").classList.add("recording");
+      $("btn-stop").disabled = false;
+      requestAnimationFrame(tick);
+    };
+    state.recorder.start();
+  }
+
+  function activeSegment(elapsed) {
+    let acc = 0;
+    for (let i = 0; i < state.segments.length; i++) {
+      acc += state.segments[i].durationMs;
+      if (elapsed < acc) return [i, elapsed - (acc - state.segments[i].durationMs)];
+    }
+    return [-1, 0];
+  }
+
+  function tick(now) {
+    if (!state.running) return;
+    const elapsed = now - state.t0;
+    const [idx, tRel] = activeSegment(elapsed);
+    if (idx === -1) { stop(); return; }
+
+    const seg = state.segments[idx];
+    if (idx !== state.segIndex) { // segment transition
+      if (state.segIndex >= 0) {
+        state.segLog[state.segLog.length - 1].tEnd = Math.round(now * 10) / 10;
+      }
+      state.segIndex = idx;
+      const { targetAt, ...rest } = seg; // strip the function for JSON
+      state.segLog.push({ ...rest, tStart: Math.round(now * 10) / 10, tEnd: null });
+      $("instruction").style.display = "block";
+      $("instruction").textContent = seg.label;
+      $("phase").textContent =
+        `Phase: recording ${idx + 1}/${state.segments.length} — ${seg.scene}`;
+    }
+
+    const { x, y } = seg.targetAt(tRel);
+    const target = $("target");
+    target.style.display = "block";
+    target.style.left = x + "px";
+    target.style.top = y + "px";
+    state.targets.push({
+      t: Math.round(now * 10) / 10,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      seg: seg.id,
+    });
+    $("progress").style.width =
+      (elapsed / timelineDuration(state.segments) * 100) + "%";
+    requestAnimationFrame(tick);
+  }
+
+  function stop() {
+    if (!state.running) return;
+    state.running = false;
+    if (state.segLog.length) {
+      state.segLog[state.segLog.length - 1].tEnd = Math.round(performance.now() * 10) / 10;
+    }
+    $("target").style.display = "none";
+    $("instruction").style.display = "none";
+    $("btn-stop").disabled = true;
+    $("phase").textContent = "Phase: encoding…";
+    state.recorder.stop(); // → onstop → save()
+    state.stream.getTracks().forEach((t) => t.stop());
+  }
+
+  function save() {
+    const stamp = new Date(state.t0Epoch).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const videoBlob = new Blob(state.chunks, { type: state.mimeType || "video/webm" });
+    const session = {
+      schema: "rollscore-gaze-session/1",
+      meta: {
+        subject: $("subject").value || "anon",
+        screen_w_cm: Number($("screen-w-cm").value) || null,
+        screen_h_cm: Number($("screen-h-cm").value) || null,
+        distance_cm: Number($("distance-cm").value) || null,
+        camera_pos: $("camera-pos").value,
+        lighting: $("lighting").value,
+        viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
+        screen_px: { w: screen.width, h: screen.height },
+        video: state.videoSettings,
+        recorder: { mimeType: state.mimeType, videoBitsPerSecond: 8_000_000 },
+        t0_perf: state.t0,
+        t0_epoch_ms: state.t0Epoch,
+        resizes: state.resizes,
+        fast,
+        ua: navigator.userAgent,
+        clock_note:
+          "All t are performance.now() ms. Align video frames primarily via " +
+          "frames[].ct (rVFC captureTime, same clock); frames[].mt is the " +
+          "video-element mediaTime. t0_perf ≈ MediaRecorder start; expect " +
+          "tens-of-ms offset between mediaTime 0 and t0_perf.",
+      },
+      segments: state.segLog,
+      targets: state.targets,
+      frames: state.frames,
+    };
+    download(videoBlob, `gaze-session-${stamp}.webm`);
+    download(new Blob([JSON.stringify(session)], { type: "application/json" }),
+             `gaze-session-${stamp}.json`);
+    $("phase").textContent =
+      `Phase: saved — ${state.targets.length} target samples, ` +
+      `${state.frames.length} frames, ${(videoBlob.size / 1e6).toFixed(1)} MB video. ` +
+      "Reload to record another session.";
+    state.done = true;
+  }
+
+  function download(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  addEventListener("resize", () => {
+    if (state.running) {
+      state.resizes.push({ t: performance.now(), w: innerWidth, h: innerHeight });
+    }
+  });
+  $("btn-start").addEventListener("click", start);
+  $("btn-stop").addEventListener("click", stop);
+  if (params.get("autostart") === "1") start();
+  </script>
+</body>
+</html>
