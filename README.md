@@ -1,5 +1,7 @@
 # rollscore
 
+> This is a prototype developed using AI coding agents and not intended for production use.
+
 A sheet-music reader that does away with page turns. Instead of flipping discrete pages,
 rollscore renders the whole score as one continuous strip and **scrolls it for you,
 automatically, from sensor input** — so your hands stay on the instrument.
